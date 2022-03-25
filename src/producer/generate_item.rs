@@ -3,6 +3,8 @@ use crate::component::{Control, Controllable};
 use crate::flow::item::FlowItem;
 use crate::producer::{Produce, ProduceError, ProducerConfig};
 
+const NAME: &str = "GenerateItem";
+
 pub struct GenerateItem {
     pub content: String,
     pub control: Control,
@@ -13,10 +15,15 @@ impl Controllable for GenerateItem {
 }
 
 impl Produce for GenerateItem {
-    fn producer_config(&self) -> ProducerConfig {
+    fn name(&self) -> &str {
+        NAME
+    }
+
+    fn config(&self) -> ProducerConfig {
         ProducerConfig {
-            thread_count: 1,
-            count_per_second: 1
+            instance_count: 1,
+            count_per_second: 1,
+            retry_count: 0
         }
     }
 

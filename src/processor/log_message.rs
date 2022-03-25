@@ -5,6 +5,8 @@ use crate::component::{Control, Controllable};
 use crate::flow::item::FlowItem;
 use crate::processor::{Changes, Process, ProcessError};
 
+const NAME: &str = "LogMessage";
+
 pub struct LogMessage {
     pub counter: Arc<AtomicUsize>,
     pub control: Control,
@@ -15,6 +17,10 @@ impl Controllable for LogMessage {
 }
 
 impl Process for LogMessage {
+    fn name(&self) -> &str {
+        NAME
+    }
+
     fn process(&self, item: FlowItem) -> Result<FlowItem, ProcessError> {
         let count: usize = self.counter.fetch_add(1, Ordering::SeqCst);
 

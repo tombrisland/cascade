@@ -3,11 +3,9 @@ use std::sync::Arc;
 use petgraph::{Direction, Graph};
 use petgraph::graph::NodeIndex;
 
-use FlowComponent::{Processor, Producer};
 use crate::flow::connection::{ComponentConnections, FlowConnection};
-
-use crate::processor::Process;
-use crate::producer::Produce;
+use crate::processor::{Process, Processor};
+use crate::producer::{Produce, Producer};
 
 pub mod controller;
 pub mod item;
@@ -23,8 +21,8 @@ pub struct FlowGraph {
 
 // Represent a single component in the flow
 pub enum FlowComponent {
-    Producer(Arc<dyn Produce>),
-    Processor(Arc<dyn Process>),
+    Producer(Producer),
+    Processor(Processor),
 }
 
 impl FlowGraph {
@@ -37,9 +35,9 @@ impl FlowGraph {
 
     // Add producer with no outgoing connections
     pub fn add_producer(mut self, producer: Arc<dyn Produce>) -> FlowGraph {
-        let index = self.graph.add_node(Producer(producer));
+        let index = self.graph.add_node(FlowComponent::Producer(Producer::new(producer)));
 
-        // Set the last_index for the connect_to_previous method
+        // Set the last_index to enable connect_to_previous
         self.last_index = Some(index);
 
         self
@@ -48,7 +46,7 @@ impl FlowGraph {
     // Add a processor connected to the previously defined Producer / Processor
     pub fn connect_to_previous(mut self, processor: Arc<dyn Process>) -> FlowGraph {
         if self.last_index.is_some() {
-            let destination = self.graph.add_node(Processor(processor));
+            let destination = self.graph.add_node(FlowComponent::Processor(Processor::new(processor)));
 
             self.graph.add_edge(self.last_index.unwrap(), destination, FlowConnection::new());
 
@@ -61,7 +59,7 @@ impl FlowGraph {
     fn component_connections(&self, node_idx: NodeIndex) -> ComponentConnections {
         ComponentConnections {
             incoming: self.connections(node_idx, Direction::Incoming),
-            outgoing: self.connections(node_idx, Direction::Outgoing)
+            outgoing: self.connections(node_idx, Direction::Outgoing),
         }
     }
 

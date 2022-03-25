@@ -8,6 +8,8 @@ use crate::component::{Control, Controllable};
 use crate::flow::item::FlowItem;
 use crate::producer::{Produce, ProduceError, ProducerConfig};
 
+const NAME: &str = "GetFile";
+
 pub struct GetFile {
     pub directory: Box<Path>,
     pub control: Control,
@@ -18,11 +20,16 @@ impl Controllable for GetFile {
 }
 
 impl Produce for GetFile {
-    fn producer_config(&self) -> ProducerConfig {
+    fn name(&self) -> &str {
+        NAME
+    }
+
+    fn config(&self) -> ProducerConfig {
         ProducerConfig {
-            thread_count: 1,
+            instance_count: 1,
             // TODO count or unlimited (thread go wild)
             count_per_second: 1,
+            retry_count: 3
         }
     }
 
@@ -44,14 +51,14 @@ impl Produce for GetFile {
                 continue;
             }
 
-            return Result::Ok(FlowItem::new(retrieve_file_properties(file, metadata)));
+            return Result::Ok(FlowItem::new(file_properties(file, metadata)));
         }
 
         Result::Err(ProduceError {})
     }
 }
 
-fn retrieve_file_properties(file: DirEntry, metadata: Metadata) -> HashMap<String, String> {
+fn file_properties(file: DirEntry, metadata: Metadata) -> HashMap<String, String> {
     HashMap::from([
         ("filename".to_string(), file.file_name().into_string().unwrap()),
         ("created".to_string(), metadata.created().unwrap()

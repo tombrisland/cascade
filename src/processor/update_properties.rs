@@ -4,6 +4,8 @@ use crate::component::{Control, Controllable};
 use crate::flow::item::FlowItem;
 use crate::processor::{Changes, Process, ProcessError};
 
+const NAME: &str = "UpdateProperties";
+
 pub struct UpdateProperties {
     pub updates: HashMap<String, String>,
     pub control: Control,
@@ -14,6 +16,10 @@ impl Controllable for UpdateProperties {
 }
 
 impl Process for UpdateProperties {
+    fn name(&self) -> &str {
+        NAME
+    }
+
     fn process(&self, mut item: FlowItem) -> Result<FlowItem, ProcessError> {
         self.updates.clone().into_iter().for_each(|(key, value)| {
             item.properties.insert(key, value);

@@ -20,7 +20,9 @@ mod processor;
 mod producer;
 mod component;
 
-fn main() {
+
+#[tokio::main]
+async fn main() {
     let generate_item = GenerateItem { content: "con".to_string(), control: Control::new() };
 
     let get_file = GetFile { directory: Box::from(Path::new("/Users/tomb/code/flow/src/test")), control: Control::new() };
