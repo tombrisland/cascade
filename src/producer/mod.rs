@@ -4,7 +4,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use nanoid::nanoid;
-use tokio::task::JoinHandle;
 
 use crate::component::Controllable;
 use crate::flow::item::FlowItem;
@@ -12,6 +11,8 @@ use crate::processor::Process;
 
 pub mod generate_item;
 pub mod get_file;
+
+const NSEC_PER_SEC: u32 = 1_000_000_000;
 
 pub struct Producer {
     // Unique to this producer instance
@@ -34,6 +35,10 @@ impl Producer {
         }
     }
 
+    pub fn config(&self) -> ProducerConfig {
+        return self.producer.config();
+    }
+
     // Return a new pointer to the underlying producer impl
     pub fn producer(&self) -> Arc<dyn Produce> {
         self.producer.clone()
@@ -48,10 +53,8 @@ impl Producer {
     }
 }
 
+#[derive(Debug)]
 pub struct ProducerConfig {
-    // How many producer instances to create
-    pub instance_count: u8,
-
     // The run count per second for each instance
     pub count_per_second: u32,
 
@@ -70,9 +73,9 @@ pub trait Produce: Send + Sync + Controllable {
 impl ProducerConfig {
     pub fn schedule_duration(&self) -> Duration {
         // How often should be producer be invoked
-        let interval: u64 = (self.count_per_second / 1000) as u64;
+        let interval: u64 = (NSEC_PER_SEC / self.count_per_second) as u64;
 
-        Duration::from_millis(interval)
+        Duration::from_nanos(interval)
     }
 }
 

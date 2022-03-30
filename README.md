@@ -1,10 +1,12 @@
 # TODO
 
-* Support multiple threads on each component
-* Support stopping and starting each component
-* Support queueing on connections
 * Add web-api to allow interactions via REST
 * Record time spent within each fn, adjust threads to take adv
+* Detect cyclic graphs
+* Try and convert most of the Arcs to Rc's only
+* Named relationships
+* Allow connecting components to named relationships
+* Put in retry for processors
 
 # QUESTIONS
 

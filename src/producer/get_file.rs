@@ -26,9 +26,7 @@ impl Produce for GetFile {
 
     fn config(&self) -> ProducerConfig {
         ProducerConfig {
-            instance_count: 1,
-            // TODO count or unlimited (thread go wild)
-            count_per_second: 1,
+            count_per_second: 10,
             retry_count: 3
         }
     }

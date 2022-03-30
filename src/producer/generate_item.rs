@@ -21,8 +21,7 @@ impl Produce for GenerateItem {
 
     fn config(&self) -> ProducerConfig {
         ProducerConfig {
-            instance_count: 1,
-            count_per_second: 1,
+            count_per_second: 100_000,
             retry_count: 0
         }
     }
