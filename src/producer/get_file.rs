@@ -1,47 +1,57 @@
-use std::fs;
 use std::collections::HashMap;
+use std::fs;
 use std::fs::{DirEntry, Metadata};
 use std::path::Path;
+use std::sync::mpsc::Sender;
 use std::time::UNIX_EPOCH;
 
-use crate::component::{Control, Controllable};
+use async_trait::async_trait;
+
+use crate::component::{Component, ComponentError};
 use crate::flow::item::FlowItem;
-use crate::producer::{Produce, ProduceError, ProducerConfig};
+use crate::producer::Produce;
 
 const NAME: &str = "GetFile";
 
+const ERR_CANNOT_READ_DIR: &str = "Unable to read directory";
+
 pub struct GetFile {
+    // Amount of files to emit from each scheduled run
+    pub batch_size: i32,
+    // Directory to poll for files
     pub directory: Box<Path>,
-    pub control: Control,
 }
 
-impl Controllable for GetFile {
-    fn control(&self) -> &Control { &self.control }
+impl Component for GetFile {
+    fn name(&self) -> &'static str {
+        return NAME;
+    }
 }
 
+#[async_trait]
 impl Produce for GetFile {
-    fn name(&self) -> &str {
-        NAME
-    }
+    fn on_initialisation(&self) {}
 
-    fn config(&self) -> ProducerConfig {
-        ProducerConfig {
-            count_per_second: 10,
-            retry_count: 3
-        }
-    }
-
-    fn try_produce(&self) -> Result<FlowItem, ProduceError> {
+    async fn try_produce(&self, tx: Sender<FlowItem>) -> Result<Option<i32>, ComponentError> {
         let entries = fs::read_dir(&self.directory);
 
         // Error if the directory can't be read
         if entries.is_err() {
-            return Result::Err(ProduceError {});
+            return Result::Err(ComponentError::new(self, ERR_CANNOT_READ_DIR.to_string()));
         }
 
+        let mut files_read = 0;
+
         for entry in entries.unwrap() {
+            // Break if we've read more files than batch_size
+            if files_read >= self.batch_size {
+                break;
+            }
+
             let file = entry.unwrap();
             let metadata = file.metadata().unwrap();
+
+            // TODO lock files by this process (can use self.id())?
 
             // Skip anything other than a file
             if !metadata.is_file() {
@@ -49,10 +59,18 @@ impl Produce for GetFile {
                 continue;
             }
 
-            return Result::Ok(FlowItem::new(file_properties(file, metadata)));
+            // Emit the FlowItem on the channel
+            match tx.send(FlowItem::new(file_properties(file, metadata))) {
+                Ok(_) => {}
+                Err(err) => {
+                    return Result::Err(ComponentError::from_send_error(self, err));
+                }
+            };
+
+            files_read += 1;
         }
 
-        Result::Err(ProduceError {})
+        return Result::Ok(Option::Some(files_read));
     }
 }
 

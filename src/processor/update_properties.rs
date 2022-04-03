@@ -1,29 +1,33 @@
 use std::collections::HashMap;
 
-use crate::component::{Control, Controllable};
+use async_trait::async_trait;
+
+use crate::component::{Component, ComponentError};
 use crate::flow::item::FlowItem;
-use crate::processor::{Changes, Process, ProcessError};
+use crate::processor::{Changes, Process};
 
 const NAME: &str = "UpdateProperties";
 
 pub struct UpdateProperties {
+    // Key value pairs to update on item properties
     pub updates: HashMap<String, String>,
-    pub control: Control,
 }
 
-impl Controllable for UpdateProperties {
-    fn control(&self) -> &Control { &self.control }
-}
-
-impl Process for UpdateProperties {
-    fn name(&self) -> &str {
+impl Component for UpdateProperties {
+    fn name(&self) -> &'static str {
         NAME
     }
+}
 
-    fn process(&self, mut item: FlowItem) -> Result<FlowItem, ProcessError> {
-        self.updates.clone().into_iter().for_each(|(key, value)| {
+#[async_trait]
+impl Process for UpdateProperties {
+    fn on_initialisation(&self) {}
+
+    async fn try_process(&self, mut item: FlowItem) -> Result<FlowItem, ComponentError> {
+        // Loop through updates and update FlowItem
+        for (key, value) in self.updates.clone() {
             item.properties.insert(key, value);
-        });
+        }
 
         Result::Ok(item)
     }

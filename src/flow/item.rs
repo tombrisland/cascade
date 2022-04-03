@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::time::{SystemTime, UNIX_EPOCH};
+use log::warn;
 
 use uuid::Uuid;
 
@@ -28,5 +29,23 @@ impl FlowItem {
             properties,
             parent_id: None
         }
+    }
+}
+
+pub struct FlowSession {
+    items: Vec<FlowItem>
+}
+
+impl FlowSession {
+    fn item(&self) -> &FlowItem {
+        if self.items.len() != 1 {
+            panic!("Item called on session with more than 1 item");
+        }
+
+        return self.items.first().unwrap();
+    }
+
+    fn items_iterator() {
+
     }
 }

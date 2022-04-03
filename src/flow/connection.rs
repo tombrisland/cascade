@@ -1,4 +1,3 @@
-#[derive(Clone)]
 // Describes the connection between components
 pub struct FlowConnection {
 }
