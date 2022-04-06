@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::atomic::AtomicUsize;
 
 use ::log::LevelFilter;
+use tokio::sync::oneshot::{channel, Receiver, Sender};
 
 use crate::flow::builder::FlowBuilder;
 use crate::flow::controller::FlowController;
@@ -13,11 +14,11 @@ use crate::processor::log_message::LogMessage;
 use crate::processor::update_properties::UpdateProperties;
 use crate::producer::generate_item::GenerateItem;
 
+mod component;
 mod flow;
+mod logger;
 mod processor;
 mod producer;
-mod logger;
-mod component;
 
 static LOGGER: SimpleLogger = SimpleLogger;
 
@@ -27,7 +28,10 @@ async fn main() {
         .map(|()| log::set_max_level(LevelFilter::Info))
         .expect("Logger failed to initialise");
 
-    let generate_item = GenerateItem { batch_size: 1, content: Option::from("con".to_string()) };
+    let generate_item = GenerateItem {
+        batch_size: 10,
+        content: Option::from("con".to_string()),
+    };
 
     // let get_file = GetFile { directory: Box::from(Path::new("C:\\Users\\tombr\\Documents\\Code\\cascade\\src\\test")) };
 
@@ -43,9 +47,17 @@ async fn main() {
     let flow = FlowBuilder::new()
         .add_producer(generate_item)
         .connect_to_previous(update_properties)
-        .connect_to_previous(log_message).build();
+        .connect_to_previous(log_message)
+        .build();
 
-    let controller = FlowController { flow };
+    let mut controller = FlowController {
+        flow,
+        producer_handles: vec![],
+    };
 
     controller.start_flow().await;
+
+    let (tx, rx): (Sender<bool>, Receiver<bool>) = channel();
+
+    rx.await;
 }

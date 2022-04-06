@@ -1,11 +1,11 @@
+use crossbeam_channel::Sender;
 use std::collections::HashMap;
-use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
 
 use crate::component::{Component, ComponentError};
 use crate::flow::item::FlowItem;
-use crate::producer::{Produce};
+use crate::producer::Produce;
 
 const NAME: &str = "GenerateItem";
 

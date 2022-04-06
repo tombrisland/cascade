@@ -3,7 +3,6 @@
 * Add web-api to allow interactions via REST
 * Record time spent within each fn, adjust threads to take adv
 * Detect cyclic graphs
-* Try and convert most of the Arcs to Rc's only
 * Named relationships
 * Allow connecting components to named relationships
 * Put in retry for processors

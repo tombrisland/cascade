@@ -1,9 +1,9 @@
 use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::Sender;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use crossbeam_channel::Sender;
 
 use crate::component::{Component, ComponentError};
 use crate::flow::item::FlowItem;

@@ -1,8 +1,7 @@
-use std::fmt::{Display, Formatter};
-use std::sync::mpsc::SendError;
-use nanoid::nanoid;
-use petgraph::graph::NodeIndex;
 use crate::flow::item::FlowItem;
+use crossbeam_channel::SendError;
+use nanoid::nanoid;
+use std::fmt::{Display, Formatter};
 
 // Trait implemented by producers and processors alike
 pub trait Component {
@@ -16,39 +15,53 @@ pub trait Component {
 }
 
 // Error returned if a component fails
+#[derive(Debug)]
 pub struct ComponentError {
     name: String,
 
     // Messages describing the error
     msg: String,
-    detail: Option<String>
+    detail: Option<String>,
 }
 
 impl Display for ComponentError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.detail {
-            None => { write!(f, "Component {} {}", self.name, self.msg) }
-            Some(detail) => { write!(f, "Component {} {} with {}", self.name, self.msg, detail.to_string()) }
+            None => {
+                write!(f, "Component {} {}", self.name, self.msg)
+            }
+            Some(detail) => {
+                write!(
+                    f,
+                    "Component {} {} with {}",
+                    self.name,
+                    self.msg,
+                    detail.to_string()
+                )
+            }
         }
     }
 }
 
 impl ComponentError {
     // Create a new error from within a Component
-    pub fn new<T : Component>(component: &T, msg: String) -> ComponentError {
+    pub fn new<T: Component>(component: &T, msg: String) -> ComponentError {
         ComponentError {
             name: component.name().to_string(),
             msg,
-            detail: None
+            detail: None,
         }
     }
 
     // Derive an error from failure to send to an output channel
-    pub fn from_send_error<T : Component>(component: &T, err: SendError<FlowItem>) -> ComponentError {
+    pub fn from_send_error<T: Component>(
+        component: &T,
+        err: SendError<FlowItem>,
+    ) -> ComponentError {
         ComponentError {
             name: component.name().to_string(),
             msg: err.to_string(),
-            detail: Option::Some("could not send to channel".to_string())
+            detail: Option::Some("could not send to channel".to_string()),
         }
     }
 }

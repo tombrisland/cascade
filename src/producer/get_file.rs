@@ -1,8 +1,8 @@
+use crossbeam_channel::Sender;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{DirEntry, Metadata};
 use std::path::Path;
-use std::sync::mpsc::Sender;
 use std::time::UNIX_EPOCH;
 
 use async_trait::async_trait;
@@ -76,8 +76,19 @@ impl Produce for GetFile {
 
 fn file_properties(file: DirEntry, metadata: Metadata) -> HashMap<String, String> {
     HashMap::from([
-        ("filename".to_string(), file.file_name().into_string().unwrap()),
-        ("created".to_string(), metadata.created().unwrap()
-            .duration_since(UNIX_EPOCH).unwrap().as_millis().to_string())
+        (
+            "filename".to_string(),
+            file.file_name().into_string().unwrap(),
+        ),
+        (
+            "created".to_string(),
+            metadata
+                .created()
+                .unwrap()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+                .to_string(),
+        ),
     ])
 }
