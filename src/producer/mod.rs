@@ -1,9 +1,9 @@
 use std::fmt::Display;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use crossbeam_channel::Sender;
+use tokio::sync::mpsc::Sender;
 
 use crate::component::{Component, ComponentError};
 use crate::flow::item::FlowItem;
@@ -33,6 +33,8 @@ pub struct Producer {
 
     pub active: AtomicBool,
 
+    pub active_instances: AtomicU32,
+
     pub config: ProducerConfig,
 }
 
@@ -41,6 +43,7 @@ impl Producer {
         Producer {
             implementation: Box::new(implementation),
             active: AtomicBool::new(true),
+            active_instances: AtomicU32::new(0),
             config,
         }
     }
@@ -54,6 +57,18 @@ impl Producer {
     pub fn should_stop(&self) -> bool {
         !self.active.load(Ordering::SeqCst)
     }
+
+    pub fn add_instance(&self) {
+        self.active_instances.fetch_add(1, Ordering::SeqCst);
+    }
+
+    pub fn remove_instance(&self) {
+        self.active_instances.fetch_sub(1, Ordering::SeqCst);
+    }
+
+    pub fn instances_maxed(&self) -> bool {
+        self.active_instances.load(Ordering::SeqCst) >= self.config.max_in_progress
+    }
 }
 
 // Configuration for a producer instance
@@ -61,6 +76,9 @@ pub struct ProducerConfig {
     /// How often to schedule the producer for running
     /// Best effort as system resources may mean speed is not attained
     pub schedule_per_second: u32,
+
+    // Maximum amount of instances that can be in progress at the same time
+    pub max_in_progress: u32,
 }
 
 impl ProducerConfig {

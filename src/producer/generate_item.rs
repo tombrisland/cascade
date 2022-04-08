@@ -1,7 +1,7 @@
-use crossbeam_channel::Sender;
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use tokio::sync::mpsc::Sender;
 
 use crate::component::{Component, ComponentError};
 use crate::flow::item::FlowItem;
@@ -29,7 +29,7 @@ impl Produce for GenerateItem {
     async fn try_produce(&self, tx: Sender<FlowItem>) -> Result<Option<i32>, ComponentError> {
         // Send as many as permitted by batch_size
         for _ in 0..self.batch_size {
-            tx.send(FlowItem::new(HashMap::new()));
+            tx.send(FlowItem::new(HashMap::new())).await;
         }
 
         Result::Ok(Option::Some(self.batch_size))

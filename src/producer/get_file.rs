@@ -1,4 +1,3 @@
-use crossbeam_channel::Sender;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{DirEntry, Metadata};
@@ -6,6 +5,7 @@ use std::path::Path;
 use std::time::UNIX_EPOCH;
 
 use async_trait::async_trait;
+use tokio::sync::mpsc::Sender;
 
 use crate::component::{Component, ComponentError};
 use crate::flow::item::FlowItem;
@@ -60,7 +60,10 @@ impl Produce for GetFile {
             }
 
             // Emit the FlowItem on the channel
-            match tx.send(FlowItem::new(file_properties(file, metadata))) {
+            match tx
+                .send(FlowItem::new(file_properties(file, metadata)))
+                .await
+            {
                 Ok(_) => {}
                 Err(err) => {
                     return Result::Err(ComponentError::from_send_error(self, err));

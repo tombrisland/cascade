@@ -1,7 +1,7 @@
 use crate::flow::item::FlowItem;
-use crossbeam_channel::SendError;
 use nanoid::nanoid;
 use std::fmt::{Display, Formatter};
+use tokio::sync::mpsc::error::SendError;
 
 // Trait implemented by producers and processors alike
 pub trait Component {

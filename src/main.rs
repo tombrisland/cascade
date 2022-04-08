@@ -29,7 +29,7 @@ async fn main() {
         .expect("Logger failed to initialise");
 
     let generate_item = GenerateItem {
-        batch_size: 10,
+        batch_size: 1,
         content: Option::from("con".to_string()),
     };
 
@@ -41,7 +41,7 @@ async fn main() {
 
     let log_message = LogMessage {
         item_count: AtomicUsize::new(1),
-        log_every_x: 1_000,
+        log_every_x: 10_000,
     };
 
     let flow = FlowBuilder::new()
