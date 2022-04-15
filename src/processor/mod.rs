@@ -72,33 +72,3 @@ impl ProcessorConfig {
         }
     }
 }
-
-pub struct ProcessorResult {
-    handle: Option<Arc<JoinHandle<FlowItem>>>,
-    item: Option<FlowItem>,
-}
-
-impl ProcessorResult {
-    pub fn from_handle(handle: JoinHandle<FlowItem>) -> ProcessorResult {
-        ProcessorResult {
-            handle: Some(Arc::new(handle)),
-            item: None,
-        }
-    }
-
-    pub fn from_item(item: FlowItem) -> ProcessorResult {
-        ProcessorResult {
-            handle: None,
-            item: Some(item),
-        }
-    }
-
-    pub async fn item(mut self) -> FlowItem {
-        match self.item {
-            // Return a clone of the cached item
-            Some(item) => item,
-            // Wait for the handle to join and return the item
-            None => FlowItem::new(HashMap::new()),
-        }
-    }
-}

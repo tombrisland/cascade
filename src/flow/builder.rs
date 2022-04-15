@@ -40,8 +40,8 @@ impl FlowBuilder {
             .add_node(FlowComponent::Producer(Arc::new(Producer::new(
                 producer,
                 ProducerConfig {
-                    schedule_per_second: 100_000,
-                    max_in_progress: 5,
+                    schedule_per_second: 10_000,
+                    max_in_progress: 25,
                 },
             ))));
 

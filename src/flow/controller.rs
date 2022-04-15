@@ -1,11 +1,14 @@
+use std::borrow::Borrow;
+use std::collections::HashMap;
 use std::sync::Arc;
 
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use petgraph::graph::NodeIndex;
 use petgraph::{Direction, Graph};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::task::JoinHandle;
 use tokio::time;
+use crate::component::ComponentError;
 
 use crate::flow::connection::FlowConnection;
 use crate::flow::item::FlowItem;
@@ -41,7 +44,12 @@ impl FlowController {
 
                 tokio::spawn(async move {
                     while let Some(item) = rx.recv().await {
-                        run_flow(&graph, idx, item).await;
+                        let id = item.id;
+
+                        match run_flow(&graph, idx, item).await {
+                            Ok(_) => { debug!("Flow {} successfully completed for {}", "", id) }
+                            Err(_) => { error!("Flow {} failed to complete for {} with {}", "", id, "") }
+                        };
                     }
                 });
 
@@ -114,35 +122,62 @@ async fn run_flow(
     graph: &Arc<Graph<FlowComponent, FlowConnection>>,
     producer_index: NodeIndex,
     input: FlowItem,
-) {
-    let mut queue: Vec<(FlowItem, NodeIndex)> = vec![(input, producer_index)];
+) -> Result<(), ComponentError> {
+    let mut queue: Vec<(Arc<FlowItem>, NodeIndex)> = vec![(Arc::new(input), producer_index)];
 
     // While there are executions left to schedule
     while !queue.is_empty() {
         if let Some((input, idx)) = queue.pop() {
             let component = graph.node_weight(idx).unwrap();
 
-            let output: FlowItem = match component {
+            let output: Result<Arc<FlowItem>, ComponentError> = match component {
                 // For a producer pass through the input
-                FlowComponent::Producer(_) => input,
+                FlowComponent::Producer(_) => Result::Ok(input),
 
                 // A processor can be scheduled to run and the output propagated
                 FlowComponent::Processor(processor) => {
                     let processor = Arc::clone(&processor.implementation);
 
+                    debug!("Processor {} will process an item", processor.id());
+
+                    // Item borrowed from Arc and cloned before use
+                    let borrowed: &FlowItem = input.borrow();
+                    let input: FlowItem = borrowed.clone();
+
                     // Execute the processor's work in a task
-                    tokio::spawn(async move { processor.try_process(input).await })
-                        .await
-                        .unwrap()
-                        .unwrap()
+                    let output =
+                        tokio::spawn(async move { processor.try_process(input).await }).await.unwrap();
+
+                    output.map(|output| Arc::new(output))
                 }
             };
 
-            graph
-                // Retrieve downstream connections
-                .neighbors_directed(idx, Direction::Outgoing)
-                // Add them to the executions list
-                .for_each(|idx| queue.push((output.clone(), idx)));
+            // Handle any error from the processor that just executed
+            match output {
+                Ok(output) => {
+                    // Count of processors immediately downstream
+                    let mut count = 0;
+
+                    graph
+                        // Retrieve downstream connections
+                        .neighbors_directed(idx, Direction::Outgoing)
+                        // Add them to the executions list
+                        .for_each(|idx| {
+                            queue.push((output.clone(), idx));
+
+                            count += 1;
+                        });
+
+                    debug!("Found {} components downstream", count);
+                }
+                Err(err) => {
+                    error!("Processor {} failed to execute", err.component_id);
+
+                    return Result::Err(err);
+                }
+            }
         }
     }
+
+    Result::Ok(())
 }

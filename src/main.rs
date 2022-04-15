@@ -29,7 +29,7 @@ async fn main() {
         .expect("Logger failed to initialise");
 
     let generate_item = GenerateItem {
-        batch_size: 1,
+        batch_size: 10,
         content: Option::from("con".to_string()),
     };
 
