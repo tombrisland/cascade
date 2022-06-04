@@ -19,7 +19,7 @@ pub struct LogMessage {
 }
 
 impl Component for LogMessage {
-    fn name(&self) -> &'static str {
+    fn type_name(&self) -> &'static str {
         NAME
     }
 }

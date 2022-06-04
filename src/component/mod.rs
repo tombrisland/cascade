@@ -1,23 +1,29 @@
 use crate::flow::item::FlowItem;
 use nanoid::nanoid;
 use std::fmt::{Display, Formatter};
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::error::SendError;
 
 // Trait implemented by producers and processors alike
 pub trait Component {
     // Return a simple name for the component
-    fn name(&self) -> &'static str;
+    fn type_name(&self) -> &'static str;
 
     // Create a unique id derived from the name
     fn id(&self) -> String {
-        format!("{}-{}", self.name(), nanoid!())
+        format!("{}-{}", self.type_name(), nanoid!())
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ComponentType {
+    PROCESSOR, PRODUCER
 }
 
 // Error returned if a component fails
 #[derive(Debug)]
 pub struct ComponentError {
-    name: String,
+    type_name: String,
 
     // Id identifying the component
     pub component_id: String,
@@ -31,13 +37,13 @@ impl Display for ComponentError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.detail {
             None => {
-                write!(f, "Component {} {}", self.name, self.msg)
+                write!(f, "Component {} {}", self.type_name, self.msg)
             }
             Some(detail) => {
                 write!(
                     f,
                     "Component {} {} with {}",
-                    self.name,
+                    self.type_name,
                     self.msg,
                     detail.to_string()
                 )
@@ -50,7 +56,7 @@ impl ComponentError {
     // Create a new error from within a Component
     pub fn new<T: Component>(component: &T, msg: String) -> ComponentError {
         ComponentError {
-            name: component.name().to_string(),
+            type_name: component.type_name().to_string(),
             component_id: component.id(),
             msg,
             detail: None,
@@ -63,7 +69,7 @@ impl ComponentError {
         err: SendError<FlowItem>,
     ) -> ComponentError {
         ComponentError {
-            name: component.name().to_string(),
+            type_name: component.type_name().to_string(),
             component_id: component.id(),
             msg: err.to_string(),
             detail: Option::Some("could not send to channel".to_string()),

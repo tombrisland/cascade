@@ -14,7 +14,7 @@ pub struct UpdateProperties {
 }
 
 impl Component for UpdateProperties {
-    fn name(&self) -> &'static str {
+    fn type_name(&self) -> &'static str {
         NAME
     }
 }

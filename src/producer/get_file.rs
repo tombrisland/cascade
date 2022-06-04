@@ -23,7 +23,7 @@ pub struct GetFile {
 }
 
 impl Component for GetFile {
-    fn name(&self) -> &'static str {
+    fn type_name(&self) -> &'static str {
         return NAME;
     }
 }

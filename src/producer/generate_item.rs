@@ -17,7 +17,7 @@ pub struct GenerateItem {
 }
 
 impl Component for GenerateItem {
-    fn name(&self) -> &'static str {
+    fn type_name(&self) -> &'static str {
         return NAME;
     }
 }
