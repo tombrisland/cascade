@@ -20,7 +20,7 @@ pub struct ComponentError {
     name: String,
 
     // Id identifying the component
-    pub component_id: String,
+    pub id: String,
 
     // Messages describing the error
     msg: String,
@@ -51,7 +51,7 @@ impl ComponentError {
     pub fn new<T: Component>(component: &T, msg: String) -> ComponentError {
         ComponentError {
             name: component.name().to_string(),
-            component_id: component.id(),
+            id: component.id(),
             msg,
             detail: None,
         }
@@ -64,9 +64,9 @@ impl ComponentError {
     ) -> ComponentError {
         ComponentError {
             name: component.name().to_string(),
-            component_id: component.id(),
+            id: component.id(),
             msg: err.to_string(),
-            detail: Option::Some("could not send to channel".to_string()),
+            detail: Some("could not send to channel".to_string()),
         }
     }
 }

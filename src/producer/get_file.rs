@@ -2,12 +2,13 @@ use std::collections::HashMap;
 use std::fs;
 use std::fs::{DirEntry, Metadata};
 use std::path::Path;
+use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 
 use async_trait::async_trait;
-use tokio::sync::mpsc::Sender;
 
 use crate::component::{Component, ComponentError};
+use crate::connection::ConnectionEdge;
 use crate::flow::item::FlowItem;
 use crate::producer::Produce;
 
@@ -32,12 +33,12 @@ impl Component for GetFile {
 impl Produce for GetFile {
     fn on_initialisation(&self) {}
 
-    async fn try_produce(&self, tx: Sender<FlowItem>) -> Result<Option<i32>, ComponentError> {
+    async fn try_produce(&self, outgoing: Arc<ConnectionEdge>) -> Result<i32, ComponentError> {
         let entries = fs::read_dir(&self.directory);
 
         // Error if the directory can't be read
         if entries.is_err() {
-            return Result::Err(ComponentError::new(self, ERR_CANNOT_READ_DIR.to_string()));
+            return Err(ComponentError::new(self, ERR_CANNOT_READ_DIR.to_string()));
         }
 
         let mut files_read = 0;
@@ -60,31 +61,31 @@ impl Produce for GetFile {
             }
 
             // Emit the FlowItem on the channel
-            match tx
+            match outgoing
                 .send(FlowItem::new(file_properties(file, metadata)))
                 .await
             {
                 Ok(_) => {}
                 Err(err) => {
-                    return Result::Err(ComponentError::from_send_error(self, err));
+                    return Err(ComponentError::from_send_error(self, err));
                 }
             };
 
             files_read += 1;
         }
 
-        return Result::Ok(Option::Some(files_read));
+        return Ok(files_read);
     }
 }
 
 fn file_properties(file: DirEntry, metadata: Metadata) -> HashMap<String, String> {
     HashMap::from([
         (
-            "filename".to_string(),
+            "file_name".to_string(),
             file.file_name().into_string().unwrap(),
         ),
         (
-            "created".to_string(),
+            "file_created".to_string(),
             metadata
                 .created()
                 .unwrap()

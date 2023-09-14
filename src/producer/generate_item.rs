@@ -1,9 +1,10 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use async_trait::async_trait;
-use tokio::sync::mpsc::Sender;
 
 use crate::component::{Component, ComponentError};
+use crate::connection::ConnectionEdge;
 use crate::flow::item::FlowItem;
 use crate::producer::Produce;
 
@@ -26,12 +27,12 @@ impl Component for GenerateItem {
 impl Produce for GenerateItem {
     fn on_initialisation(&self) {}
 
-    async fn try_produce(&self, tx: Sender<FlowItem>) -> Result<Option<i32>, ComponentError> {
+    async fn try_produce(&self, outgoing: Arc<ConnectionEdge>) -> Result<i32, ComponentError> {
         // Send as many as permitted by batch_size
         for _ in 0..self.batch_size {
-            tx.send(FlowItem::new(HashMap::new())).await;
+            outgoing.send(FlowItem::new(HashMap::new())).await.unwrap();
         }
 
-        Result::Ok(Option::Some(self.batch_size))
+        Ok(self.batch_size)
     }
 }

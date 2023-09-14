@@ -1,13 +1,16 @@
-# TODO
-
+# Soon
 * Add web-api to allow interactions via REST
-* Record time spent within each fn, adjust threads to take adv
-* Detect cyclic graphs
-* Named relationships
-* Allow connecting components to named relationships
+* Metrics on queues
+* Config cleanup and normalise
+* Support multiple incoming connections
+
+## Way out
 * Put in retry for processors
-
-# QUESTIONS
-
-* Is there a better way to have mandatory fields traits than fns? e.g. pause mutex
-* Do I need to clone everything to use within threads
+* Parent id for flow items
+* Updating queue sizes on the fly
+* Multiple content repositories
+* Different content types
+* Detect cyclic graphs?
+* Metrics for each processor
+* Scheduled / Event driven
+* Collapse graphs and enable parallel execution where nothing changed

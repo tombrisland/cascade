@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use crate::component::{Component, ComponentError};
 use crate::flow::item::FlowItem;
-use crate::processor::{Changes, Process};
+use crate::processor::Process;
 
 const NAME: &str = "UpdateProperties";
 
@@ -29,13 +29,6 @@ impl Process for UpdateProperties {
             item.properties.insert(key, value);
         }
 
-        Result::Ok(item)
-    }
-
-    fn will_edit(&self) -> Changes {
-        Changes {
-            properties: self.updates.keys().cloned().collect(),
-            content: false,
-        }
+        Ok(item)
     }
 }

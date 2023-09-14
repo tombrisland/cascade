@@ -6,7 +6,7 @@ use log::info;
 
 use crate::component::{Component, ComponentError};
 use crate::flow::item::FlowItem;
-use crate::processor::{Changes, Process};
+use crate::processor::{Process};
 
 const NAME: &str = "LogMessage";
 
@@ -42,13 +42,6 @@ impl Process for LogMessage {
             info!("Item number {} took {:.2}ms, contents {:?}", count, elapsed_millis, item);
         }
 
-        Result::Ok(item)
-    }
-
-    fn will_edit(&self) -> Changes {
-        Changes {
-            properties: vec![],
-            content: false,
-        }
+        Ok(item)
     }
 }
