@@ -4,11 +4,11 @@ use petgraph::{Direction, Graph, Incoming, Outgoing};
 use petgraph::graph::{NodeIndex, NodeIndices};
 
 use crate::connection::ConnectionEdge;
-use crate::flow::graph_builder::ComponentNode;
+use crate::graph::graph_builder::ComponentNode;
 
 pub type GraphInternal = Graph<ComponentNode, Arc<ConnectionEdge>>;
 
-// Represents a graph of the entire flow
+// Represents a graph of the entire graph
 pub struct CascadeGraph {
     pub graph_internal: GraphInternal,
 }

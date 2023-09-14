@@ -4,11 +4,11 @@ use petgraph::Graph;
 use petgraph::graph::NodeIndex;
 
 use crate::connection::ConnectionEdge;
-use crate::flow::graph::{CascadeGraph, GraphInternal};
+use crate::graph::graph::{CascadeGraph, GraphInternal};
 use crate::processor::{Process, Processor};
 use crate::producer::{Produce, Producer, ProducerConfig};
 
-// Represents a graph of the entire flow
+// Represents a graph of the entire graph
 pub struct CascadeGraphBuilder {
     pub graph_internal: GraphInternal,
 
@@ -16,7 +16,7 @@ pub struct CascadeGraphBuilder {
     last_index: Option<NodeIndex>,
 }
 
-// Represent a single component in the flow
+// Represent a single component in the graph
 pub enum ComponentNode {
     Producer(Arc<Producer>),
     Processor(Arc<Processor>),

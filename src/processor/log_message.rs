@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use log::info;
 
 use crate::component::{Component, ComponentError};
-use crate::flow::item::FlowItem;
+use crate::graph::item::CascadeItem;
 use crate::processor::{Process};
 
 const NAME: &str = "LogMessage";
@@ -28,7 +28,7 @@ impl Component for LogMessage {
 impl Process for LogMessage {
     fn on_initialisation(&self) {}
 
-    async fn try_process(&self, item: FlowItem) -> Result<FlowItem, ComponentError> {
+    async fn try_process(&self, item: CascadeItem) -> Result<CascadeItem, ComponentError> {
         // Increment item count and fetch the value
         let count: usize = self.item_count.fetch_add(1, Ordering::SeqCst);
 

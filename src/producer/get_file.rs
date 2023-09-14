@@ -9,7 +9,7 @@ use async_trait::async_trait;
 
 use crate::component::{Component, ComponentError};
 use crate::connection::ConnectionEdge;
-use crate::flow::item::FlowItem;
+use crate::graph::item::CascadeItem;
 use crate::producer::Produce;
 
 const NAME: &str = "GetFile";
@@ -62,7 +62,7 @@ impl Produce for GetFile {
 
             // Emit the FlowItem on the channel
             match outgoing
-                .send(FlowItem::new(file_properties(file, metadata)))
+                .send(CascadeItem::new(file_properties(file, metadata)))
                 .await
             {
                 Ok(_) => {}

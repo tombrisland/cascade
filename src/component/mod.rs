@@ -1,4 +1,4 @@
-use crate::flow::item::FlowItem;
+use crate::graph::item::CascadeItem;
 use nanoid::nanoid;
 use std::fmt::{Display, Formatter};
 use tokio::sync::mpsc::error::SendError;
@@ -60,7 +60,7 @@ impl ComponentError {
     // Derive an error from failure to send to an output channel
     pub fn from_send_error<T: Component>(
         component: &T,
-        err: SendError<FlowItem>,
+        err: SendError<CascadeItem>,
     ) -> ComponentError {
         ComponentError {
             name: component.name().to_string(),

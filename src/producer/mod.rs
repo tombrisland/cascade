@@ -15,7 +15,7 @@ const NSEC_PER_SEC: u32 = 1_000_000_000;
 #[async_trait]
 // Trait to implement to create a producer
 pub trait Produce: Component + Send + Sync {
-    /// Called when the containing flow is first started.
+    /// Called when the containing graph is first started.
     /// Any initialisation can be performed here at a low cost.
     fn on_initialisation(&self);
 

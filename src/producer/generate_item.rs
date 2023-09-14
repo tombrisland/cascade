@@ -5,7 +5,7 @@ use async_trait::async_trait;
 
 use crate::component::{Component, ComponentError};
 use crate::connection::ConnectionEdge;
-use crate::flow::item::FlowItem;
+use crate::graph::item::CascadeItem;
 use crate::producer::Produce;
 
 const NAME: &str = "GenerateItem";
@@ -30,7 +30,7 @@ impl Produce for GenerateItem {
     async fn try_produce(&self, outgoing: Arc<ConnectionEdge>) -> Result<i32, ComponentError> {
         // Send as many as permitted by batch_size
         for _ in 0..self.batch_size {
-            outgoing.send(FlowItem::new(HashMap::new())).await.unwrap();
+            outgoing.send(CascadeItem::new(HashMap::new())).await.unwrap();
         }
 
         Ok(self.batch_size)

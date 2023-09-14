@@ -7,9 +7,9 @@ use tokio::time;
 use tokio::time::MissedTickBehavior::Delay;
 
 use crate::connection::ConnectionEdge;
-use crate::flow::graph::CascadeGraph;
-use crate::flow::graph_builder::ComponentNode;
-use crate::flow::item::FlowItem;
+use crate::graph::graph::CascadeGraph;
+use crate::graph::graph_builder::ComponentNode;
+use crate::graph::item::CascadeItem;
 use crate::processor::{Process, Processor};
 use crate::producer::Producer;
 
@@ -69,7 +69,7 @@ async fn start_processor(instance: Arc<Processor>, node_idx: NodeIndex, graph: A
 
         loop {
             if let Some(input) = inbound.recv().await {
-                let output: FlowItem = processor.try_process(input).await.unwrap();
+                let output: CascadeItem = processor.try_process(input).await.unwrap();
 
                 if let Some(outbound) = outbound {
                     outbound.send(output).await.expect("Something went wrong");

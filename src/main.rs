@@ -7,17 +7,16 @@ use std::sync::atomic::AtomicUsize;
 use ::log::LevelFilter;
 use tokio::sync::oneshot::{channel, Receiver, Sender};
 
-use crate::flow::controller::CascadeController;
-use crate::flow::graph_builder::CascadeGraphBuilder;
+use crate::graph::controller::CascadeController;
+use crate::graph::graph_builder::CascadeGraphBuilder;
 use crate::logger::SimpleLogger;
 use crate::processor::log_message::LogMessage;
 use crate::processor::update_properties::UpdateProperties;
 use crate::producer::generate_item::GenerateItem;
 
 mod component;
-mod flow;
+mod graph;
 mod connection;
-
 mod logger;
 mod processor;
 mod producer;

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 
 use crate::component::{Component, ComponentError};
-use crate::flow::item::FlowItem;
+use crate::graph::item::CascadeItem;
 use crate::processor::Process;
 
 const NAME: &str = "UpdateProperties";
@@ -23,7 +23,7 @@ impl Component for UpdateProperties {
 impl Process for UpdateProperties {
     fn on_initialisation(&self) {}
 
-    async fn try_process(&self, mut item: FlowItem) -> Result<FlowItem, ComponentError> {
+    async fn try_process(&self, mut item: CascadeItem) -> Result<CascadeItem, ComponentError> {
         // Loop through updates and update FlowItem
         for (key, value) in self.updates.clone() {
             item.properties.insert(key, value);
