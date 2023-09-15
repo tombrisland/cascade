@@ -46,16 +46,14 @@ impl CascadeController {
                 ComponentNode::Processor(processor) => {
                     let processor = Arc::clone(processor);
 
-                    tokio::spawn(async move {
-                        start_processor(processor, node_idx, graph).await
-                    });
+                    start_processor(processor, node_idx, graph);
                 }
             }
         }
     }
 }
 
-async fn start_processor(instance: Arc<Processor>, node_idx: NodeIndex, graph: Arc<CascadeGraph>) {
+fn start_processor(instance: Arc<Processor>, node_idx: NodeIndex, graph: Arc<CascadeGraph>) {
     // New reference to processor instance
     let instance: Arc<Processor> = Arc::clone(&instance);
 
@@ -79,7 +77,7 @@ async fn start_processor(instance: Arc<Processor>, node_idx: NodeIndex, graph: A
 
             loop {
                 if let Some(input) = incoming.recv().await {
-                    let output: CascadeItem = processor.try_process(input).await.unwrap();
+                    let output: CascadeItem = processor.process(input).await.unwrap();
 
                     component_output.send(output).await.expect("Something went wrong");
                 }
@@ -103,7 +101,7 @@ async fn start_producer(instance: Arc<Producer>, outbound: ComponentOutput) {
         let outbound = outbound.clone();
 
         if instance.should_stop() {
-            info!("Producer {} was terminated", instance.implementation.id());
+            info!("Producer {} was terminated", instance.component.id);
 
             break;
         }
@@ -121,12 +119,12 @@ async fn start_producer(instance: Arc<Producer>, outbound: ComponentOutput) {
         tokio::spawn(async move {
             let producer = &instance.implementation;
 
-            match producer.try_produce(outbound).await {
+            match producer.produce(outbound).await {
                 // Producer returns count of items emitted to channel
                 Ok(count) => {
                     debug!(
                             "Producer {} execution emitted {} items",
-                            producer.id(),
+                            instance.component.id,
                             count
                         );
                 }

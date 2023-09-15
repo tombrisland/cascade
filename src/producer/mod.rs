@@ -3,25 +3,20 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 
-use crate::component::{Component, ComponentError};
+use crate::component::{Component, ComponentError, NamedComponent};
 use crate::connection::ComponentOutput;
 
 pub mod generate_item;
-pub mod get_file;
 
 const NSEC_PER_SEC: u32 = 1_000_000_000;
 
 #[async_trait]
 // Trait to implement to create a producer
-pub trait Produce: Component + Send + Sync {
-    /// Called when the containing graph is first started.
-    /// Any initialisation can be performed here at a low cost.
-    fn on_initialisation(&self);
-
+pub trait Produce: NamedComponent + Send + Sync {
     /// Produce any number of results and forward to the provided channel.
     /// The number of results produced can be returned with Result::Ok.
     /// In the case of failure a ProduceError should be returned.
-    async fn try_produce(&self, outgoing: ComponentOutput) -> Result<i32, ComponentError>;
+    async fn produce(&self, outgoing: ComponentOutput) -> Result<i32, ComponentError>;
 }
 
 // Wrapper for the producer implementation
@@ -29,17 +24,18 @@ pub struct Producer {
     // Underlying producer to call
     pub implementation: Box<dyn Produce>,
 
-    pub active: AtomicBool,
-
-    pub active_instances: AtomicU32,
-
+    pub component: Component,
     pub config: ProducerConfig,
+
+    pub active: AtomicBool,
+    pub active_instances: AtomicU32,
 }
 
 impl Producer {
     pub fn new<T: 'static + Produce>(implementation: T, config: ProducerConfig) -> Producer {
         Producer {
             implementation: Box::new(implementation),
+            component: Component::new::<T>("display_name".to_string()),
             active: AtomicBool::new(true),
             active_instances: AtomicU32::new(0),
             config,

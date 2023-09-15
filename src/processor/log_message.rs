@@ -4,11 +4,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use async_trait::async_trait;
 use log::info;
 
-use crate::component::{Component, ComponentError};
+use crate::component::{ComponentError, NamedComponent};
 use crate::graph::item::CascadeItem;
 use crate::processor::{Process};
-
-const NAME: &str = "LogMessage";
 
 pub struct LogMessage {
     // Count of the items passed through this processor
@@ -18,17 +16,15 @@ pub struct LogMessage {
     pub log_every_x: usize,
 }
 
-impl Component for LogMessage {
-    fn name(&self) -> &'static str {
-        NAME
+impl NamedComponent for LogMessage {
+    fn type_name() -> &'static str where Self: Sized {
+        "LogMessage"
     }
 }
 
 #[async_trait]
 impl Process for LogMessage {
-    fn on_initialisation(&self) {}
-
-    async fn try_process(&self, item: CascadeItem) -> Result<CascadeItem, ComponentError> {
+    async fn process(&self, item: CascadeItem) -> Result<CascadeItem, ComponentError> {
         // Increment item count and fetch the value
         let count: usize = self.item_count.fetch_add(1, Ordering::SeqCst);
 
