@@ -21,10 +21,8 @@ impl CascadeGraph {
     pub fn get_node_component(&self, node_idx: NodeIndex) -> Option<&ComponentNode> {
         self.graph_internal.node_weight(node_idx)
     }
-    pub fn get_incoming_connection(&self, node_idx: NodeIndex) -> Arc<ConnectionEdge> {
-        let connections = self.get_connections_directed(node_idx, Incoming);
-
-        connections.get(0).unwrap().clone()
+    pub fn get_incoming_connections(&self, node_idx: NodeIndex) -> Vec<Arc<ConnectionEdge>> {
+        self.get_connections_directed(node_idx, Incoming)
     }
 
     pub fn get_output(&self, node_idx: NodeIndex) -> ComponentOutput {

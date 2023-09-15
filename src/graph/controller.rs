@@ -57,23 +57,35 @@ impl CascadeController {
 
 async fn start_processor(instance: Arc<Processor>, node_idx: NodeIndex, graph: Arc<CascadeGraph>) {
     // New reference to processor instance
-    let instance = Arc::clone(&instance);
+    let instance: Arc<Processor> = Arc::clone(&instance);
 
-    // Task to operate on results
-    tokio::spawn(async move {
-        let processor: &Arc<dyn Process> = &instance.implementation;
+    let incoming_connections: Vec<Arc<ConnectionEdge>> = graph.get_incoming_connections(node_idx);
 
-        let inbound: Arc<ConnectionEdge> = graph.get_incoming_connection(node_idx);
-        let component_output: ComponentOutput = graph.get_output(node_idx);
+    // No point starting a task if this component has no input
+    if incoming_connections.is_empty() {
+        return;
+    }
 
-        loop {
-            if let Some(input) = inbound.recv().await {
-                let output: CascadeItem = processor.try_process(input).await.unwrap();
+    for incoming in incoming_connections {
+        let graph: Arc<CascadeGraph> = Arc::clone(&graph);
+        let instance: Arc<Processor> = Arc::clone(&instance);
+        let incoming: Arc<ConnectionEdge> = Arc::clone(&incoming);
 
-                component_output.send(output).await.expect("Something went wrong");
+        // Task to execute processor on each input item
+        tokio::spawn(async move {
+            let processor: &Arc<dyn Process> = &instance.implementation;
+
+            let component_output: ComponentOutput = graph.get_output(node_idx);
+
+            loop {
+                if let Some(input) = incoming.recv().await {
+                    let output: CascadeItem = processor.try_process(input).await.unwrap();
+
+                    component_output.send(output).await.expect("Something went wrong");
+                }
             }
-        }
-    });
+        });
+    }
 }
 
 async fn start_producer(instance: Arc<Producer>, outbound: ComponentOutput) {
