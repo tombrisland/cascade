@@ -1,10 +1,9 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use async_trait::async_trait;
 
 use crate::component::{Component, ComponentError};
-use crate::connection::{ComponentOutput, ConnectionEdge};
+use crate::connection::ComponentOutput;
 use crate::graph::item::CascadeItem;
 use crate::producer::Produce;
 

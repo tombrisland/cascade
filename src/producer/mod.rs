@@ -1,11 +1,10 @@
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 
 use async_trait::async_trait;
 
 use crate::component::{Component, ComponentError};
-use crate::connection::{ComponentOutput, ConnectionEdge};
+use crate::connection::ComponentOutput;
 
 pub mod generate_item;
 pub mod get_file;
