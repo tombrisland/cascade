@@ -3,7 +3,7 @@ use std::sync::Arc;
 use petgraph::{Direction, Graph, Incoming, Outgoing};
 use petgraph::graph::{NodeIndex, NodeIndices};
 
-use crate::connection::ConnectionEdge;
+use crate::connection::{ComponentOutput, ConnectionEdge};
 use crate::graph::graph_builder::ComponentNode;
 
 pub type GraphInternal = Graph<ComponentNode, Arc<ConnectionEdge>>;
@@ -27,10 +27,10 @@ impl CascadeGraph {
         connections.get(0).unwrap().clone()
     }
 
-    pub fn get_outgoing_connection(&self, node_idx: NodeIndex) -> Option<Arc<ConnectionEdge>> {
-        let connections = self.get_connections_directed(node_idx, Outgoing);
+    pub fn get_output(&self, node_idx: NodeIndex) -> ComponentOutput {
+        let connections: Vec<Arc<ConnectionEdge>> = self.get_connections_directed(node_idx, Outgoing);
 
-        connections.get(0).cloned()
+        ComponentOutput::new(connections)
     }
 
     fn get_connections_directed(&self, node_idx: NodeIndex, direction: Direction) -> Vec<Arc<ConnectionEdge>> {

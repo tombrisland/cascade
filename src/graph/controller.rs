@@ -6,7 +6,7 @@ use tokio::task::JoinHandle;
 use tokio::time;
 use tokio::time::MissedTickBehavior::Delay;
 
-use crate::connection::ConnectionEdge;
+use crate::connection::{ComponentOutput, ConnectionEdge};
 use crate::graph::graph::CascadeGraph;
 use crate::graph::graph_builder::ComponentNode;
 use crate::graph::item::CascadeItem;
@@ -36,9 +36,9 @@ impl CascadeController {
                     let producer = Arc::clone(producer);
 
                     let handle: JoinHandle<()> = tokio::spawn(async move {
-                        let outbound: Arc<ConnectionEdge> = graph.get_outgoing_connection(node_idx).unwrap();
+                        let component_output: ComponentOutput = graph.get_output(node_idx);
 
-                        start_producer(producer, outbound.clone()).await
+                        start_producer(producer, component_output).await
                     });
 
                     self.producer_handles.push(handle);
@@ -64,22 +64,19 @@ async fn start_processor(instance: Arc<Processor>, node_idx: NodeIndex, graph: A
         let processor: &Arc<dyn Process> = &instance.implementation;
 
         let inbound: Arc<ConnectionEdge> = graph.get_incoming_connection(node_idx);
-        // There may be no outbound connection
-        let outbound: &Option<Arc<ConnectionEdge>> = &graph.get_outgoing_connection(node_idx);
+        let component_output: ComponentOutput = graph.get_output(node_idx);
 
         loop {
             if let Some(input) = inbound.recv().await {
                 let output: CascadeItem = processor.try_process(input).await.unwrap();
 
-                if let Some(outbound) = outbound {
-                    outbound.send(output).await.expect("Something went wrong");
-                }
+                component_output.send(output).await.expect("Something went wrong");
             }
         }
     });
 }
 
-async fn start_producer(instance: Arc<Producer>, outbound: Arc<ConnectionEdge>) {
+async fn start_producer(instance: Arc<Producer>, outbound: ComponentOutput) {
     // Create an interval to produce at the configured rate
     let mut interval = time::interval(instance.config.schedule_duration());
 

@@ -2,13 +2,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::fs::{DirEntry, Metadata};
 use std::path::Path;
-use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 
 use async_trait::async_trait;
 
 use crate::component::{Component, ComponentError};
-use crate::connection::ConnectionEdge;
+use crate::connection::ComponentOutput;
 use crate::graph::item::CascadeItem;
 use crate::producer::Produce;
 
@@ -33,7 +32,7 @@ impl Component for GetFile {
 impl Produce for GetFile {
     fn on_initialisation(&self) {}
 
-    async fn try_produce(&self, outgoing: Arc<ConnectionEdge>) -> Result<i32, ComponentError> {
+    async fn try_produce(&self, output: ComponentOutput) -> Result<i32, ComponentError> {
         let entries = fs::read_dir(&self.directory);
 
         // Error if the directory can't be read
@@ -61,7 +60,7 @@ impl Produce for GetFile {
             }
 
             // Emit the FlowItem on the channel
-            match outgoing
+            match output
                 .send(CascadeItem::new(file_properties(file, metadata)))
                 .await
             {

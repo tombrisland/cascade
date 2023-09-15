@@ -5,7 +5,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 
 use crate::component::{Component, ComponentError};
-use crate::connection::ConnectionEdge;
+use crate::connection::{ComponentOutput, ConnectionEdge};
 
 pub mod generate_item;
 pub mod get_file;
@@ -22,7 +22,7 @@ pub trait Produce: Component + Send + Sync {
     /// Produce any number of results and forward to the provided channel.
     /// The number of results produced can be returned with Result::Ok.
     /// In the case of failure a ProduceError should be returned.
-    async fn try_produce(&self, outgoing: Arc<ConnectionEdge>) -> Result<i32, ComponentError>;
+    async fn try_produce(&self, outgoing: ComponentOutput) -> Result<i32, ComponentError>;
 }
 
 // Wrapper for the producer implementation

@@ -10,7 +10,7 @@ use crate::producer::{Produce, Producer, ProducerConfig};
 
 // Represents a graph of the entire graph
 pub struct CascadeGraphBuilder {
-    pub graph_internal: GraphInternal,
+    graph_internal: GraphInternal,
 
     // Last node added
     last_index: Option<NodeIndex>,
