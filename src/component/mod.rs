@@ -1,27 +1,53 @@
 use std::fmt::{Display, Formatter};
 
 use nanoid::nanoid;
+use serde::{Deserialize, Deserializer};
+use serde_json::Value;
 use tokio::sync::mpsc::error::SendError;
 
 use crate::graph::item::CascadeItem;
+use crate::processor::Processor;
+use crate::producer::Producer;
 
-// Trait implemented by producers and processors alike
+mod execution;
+
 pub trait NamedComponent {
     fn type_name() -> &'static str where Self: Sized;
 }
 
-pub struct Component {
+#[derive(Clone, Deserialize)]
+pub enum ComponentType {
+    Producer,
+    Processor,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct ComponentDefinition {
+    pub metadata: ComponentMetadata,
+
+    pub component_type: ComponentType,
+
+    pub config: Value,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct ComponentMetadata {
     pub id: String,
 
-    pub type_name: &'static str,
+    pub type_name: String,
     pub display_name: String,
 }
 
-impl Component {
-    pub fn new<T: NamedComponent>(display_name: String) -> Component {
-        let type_name: &str = T::type_name();
+pub enum ComponentInstance {
+    Producer(Producer),
+    Processor(Processor),
+}
 
-        Component {
+impl ComponentMetadata {
+    pub fn from_named_impl<T: NamedComponent>(display_name: String) -> ComponentMetadata {
+        let type_name: String = T::type_name().to_string();
+
+        ComponentMetadata {
             id: format!("{}-{}", type_name, nanoid!()),
             type_name,
             display_name,

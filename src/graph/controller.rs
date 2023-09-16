@@ -1,92 +1,106 @@
+use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
 use log::{debug, info, warn};
 use petgraph::graph::NodeIndex;
-use tokio::task::JoinHandle;
 use tokio::time;
 use tokio::time::MissedTickBehavior::Delay;
 
-use crate::connection::{ComponentOutput, ConnectionEdge};
-use crate::graph::graph::CascadeGraph;
-use crate::graph::graph_builder::ComponentNode;
+use crate::component::ComponentInstance;
+use crate::component_registry::registry::ComponentRegistry;
+use crate::connection::{Connection, Connections};
+use crate::graph::graph::{CascadeGraph, ConnectionDetails};
 use crate::graph::item::CascadeItem;
 use crate::processor::{Process, Processor};
-use crate::producer::Producer;
+use crate::producer::{Produce, Producer};
 
 // Control the execution of a FlowGraph
 pub struct CascadeController {
-    pub graph: Arc<CascadeGraph>,
-
-    pub producer_handles: Vec<JoinHandle<()>>,
+    pub graph_definition: CascadeGraph,
 }
 
-impl CascadeController {
-    pub async fn start(&mut self) {
-        let graph: &Arc<CascadeGraph> = &self.graph;
+#[derive(Debug)]
+pub enum StartComponentError {
+    InvalidNodeIndex(usize),
+    MissingComponent(String),
+}
 
-        info!("Starting cascade graph with {} nodes", graph.get_nodes().len());
-
-        for node_idx in graph.get_nodes() {
-            let flow_component = graph.get_node_component(node_idx).unwrap();
-
-            let graph: Arc<CascadeGraph> = Arc::clone(&graph);
-
-            match flow_component {
-                ComponentNode::Producer(producer) => {
-                    let producer = Arc::clone(producer);
-
-                    let handle: JoinHandle<()> = tokio::spawn(async move {
-                        let component_output: ComponentOutput = graph.get_output(node_idx);
-
-                        start_producer(producer, component_output).await
-                    });
-
-                    self.producer_handles.push(handle);
-                }
-                ComponentNode::Processor(processor) => {
-                    let processor = Arc::clone(processor);
-
-                    start_processor(processor, node_idx, graph);
-                }
-            }
+impl Display for StartComponentError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StartComponentError::InvalidNodeIndex(idx) => f.write_fmt(format_args!("No node in graph at index {}", idx)),
+            StartComponentError::MissingComponent(type_name) => f.write_fmt(format_args!("Component {} not known to instance", type_name)),
         }
     }
 }
 
-fn start_processor(instance: Arc<Processor>, node_idx: NodeIndex, graph: Arc<CascadeGraph>) {
+impl CascadeController {
+    pub fn new(component_registry: ComponentRegistry) -> CascadeController {
+        CascadeController {
+            graph_definition: CascadeGraph { component_registry, graph_internal: Default::default(), edge_state: Default::default() },
+        }
+    }
+
+    pub async fn start_component(&mut self, node_idx: NodeIndex) -> Result<(), StartComponentError> {
+        let graph: &mut CascadeGraph = &mut self.graph_definition;
+
+        // Fail if the index isn't present in the graph
+        let (instance, metadata) = graph.get_component_for_idx(node_idx)
+            .ok_or_else(|| StartComponentError::InvalidNodeIndex(node_idx.index()))?;
+
+        info!("Starting {} component with id {}", metadata.type_name, metadata.id);
+
+        let ConnectionDetails { incoming, outgoing } = graph.get_connections(node_idx);
+
+        match instance {
+            ComponentInstance::Producer(producer) => {
+                tokio::spawn(async move {
+                    // TODO no need to be arc
+                    start_producer(Arc::new(producer), outgoing).await;
+                });
+            }
+            ComponentInstance::Processor(processor) => {
+                start_processor(Arc::new(processor), incoming, outgoing);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+fn start_processor(instance: Arc<Processor>, incoming: Connections, outgoing: Connections) {
     // New reference to processor instance
     let instance: Arc<Processor> = Arc::clone(&instance);
+    let outgoing: Arc<Connections> = Arc::new(outgoing);
 
-    let incoming_connections: Vec<Arc<ConnectionEdge>> = graph.get_incoming_connections(node_idx);
+    let incoming_connections = incoming.connections;
 
     // No point starting a task if this component has no input
     if incoming_connections.is_empty() {
         return;
     }
 
-    for incoming in incoming_connections {
-        let graph: Arc<CascadeGraph> = Arc::clone(&graph);
+    for connection in incoming_connections {
         let instance: Arc<Processor> = Arc::clone(&instance);
-        let incoming: Arc<ConnectionEdge> = Arc::clone(&incoming);
+        let incoming: Arc<Connection> = Arc::clone(&connection);
+        let outgoing: Arc<Connections> = Arc::clone(&outgoing);
 
         // Task to execute processor on each input item
         tokio::spawn(async move {
             let processor: &Arc<dyn Process> = &instance.implementation;
 
-            let component_output: ComponentOutput = graph.get_output(node_idx);
-
             loop {
                 if let Some(input) = incoming.recv().await {
                     let output: CascadeItem = processor.process(input).await.unwrap();
 
-                    component_output.send(output).await.expect("Something went wrong");
+                    outgoing.send(output).await.expect("Something went wrong");
                 }
             }
         });
     }
 }
 
-async fn start_producer(instance: Arc<Producer>, outbound: ComponentOutput) {
+async fn start_producer(instance: Arc<Producer>, outbound: Connections) {
     // Create an interval to produce at the configured rate
     let mut interval = time::interval(instance.config.schedule_duration());
 
@@ -101,7 +115,7 @@ async fn start_producer(instance: Arc<Producer>, outbound: ComponentOutput) {
         let outbound = outbound.clone();
 
         if instance.should_stop() {
-            info!("Producer {} was terminated", instance.component.id);
+            info!("Producer {} was terminated", instance.metadata.id);
 
             break;
         }
@@ -124,7 +138,7 @@ async fn start_producer(instance: Arc<Producer>, outbound: ComponentOutput) {
                 Ok(count) => {
                     debug!(
                             "Producer {} execution emitted {} items",
-                            instance.component.id,
+                            instance.metadata.id,
                             count
                         );
                 }

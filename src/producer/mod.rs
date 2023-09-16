@@ -1,10 +1,12 @@
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 
 use async_trait::async_trait;
+use serde_json::Value;
 
-use crate::component::{Component, ComponentError, NamedComponent};
-use crate::connection::ComponentOutput;
+use crate::component::{ComponentError, ComponentMetadata, NamedComponent};
+use crate::connection::Connections;
 
 pub mod generate_item;
 
@@ -13,18 +15,23 @@ const NSEC_PER_SEC: u32 = 1_000_000_000;
 #[async_trait]
 // Trait to implement to create a producer
 pub trait Produce: NamedComponent + Send + Sync {
+    /// Create and return a new instance of this processor
+    fn create(config: Value) -> Arc<dyn Produce>
+        where
+            Self: Sized;
+
     /// Produce any number of results and forward to the provided channel.
     /// The number of results produced can be returned with Result::Ok.
     /// In the case of failure a ProduceError should be returned.
-    async fn produce(&self, outgoing: ComponentOutput) -> Result<i32, ComponentError>;
+    async fn produce(&self, outgoing: Connections) -> Result<i32, ComponentError>;
 }
 
 // Wrapper for the producer implementation
 pub struct Producer {
+    pub metadata: ComponentMetadata,
     // Underlying producer to call
-    pub implementation: Box<dyn Produce>,
+    pub implementation: Arc<dyn Produce>,
 
-    pub component: Component,
     pub config: ProducerConfig,
 
     pub active: AtomicBool,
@@ -32,13 +39,16 @@ pub struct Producer {
 }
 
 impl Producer {
-    pub fn new<T: 'static + Produce>(implementation: T, config: ProducerConfig) -> Producer {
+    pub fn new(metadata: ComponentMetadata, implementation: Arc<dyn Produce>) -> Producer {
         Producer {
-            implementation: Box::new(implementation),
-            component: Component::new::<T>("display_name".to_string()),
+            implementation,
+            metadata,
             active: AtomicBool::new(true),
             active_instances: AtomicU32::new(0),
-            config,
+            config: ProducerConfig {
+                schedule_per_second: 2,
+                concurrency: 1,
+            },
         }
     }
 
