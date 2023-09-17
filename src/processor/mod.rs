@@ -8,7 +8,6 @@ use crate::graph::item::CascadeItem;
 
 pub mod log_message;
 pub mod update_properties;
-
 #[async_trait]
 // Trait to implement to create a producer
 pub trait Process: NamedComponent + Send + Sync {

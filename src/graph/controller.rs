@@ -37,7 +37,7 @@ impl Display for StartComponentError {
 impl CascadeController {
     pub fn new(component_registry: ComponentRegistry) -> CascadeController {
         CascadeController {
-            graph_definition: CascadeGraph { component_registry, graph_internal: Default::default(), edge_state: Default::default() },
+            graph_definition: CascadeGraph { component_registry, graph_internal: Default::default(), connection_map: Default::default() },
         }
     }
 

@@ -7,18 +7,19 @@ use nanoid::nanoid;
 #[derive(Debug, Clone)]
 pub struct CascadeItem {
     pub id: String,
-    // Time the item was created in epoch nanos
-    pub created_time: u128,
+    pub created_nanos: u128,
     // Map of string properties
     pub properties: HashMap<String, String>,
     pub content: HashMap<String, Vec<u8>>,
 }
 
+impl Unpin for CascadeItem {}
+
 impl CascadeItem {
     pub fn new(properties: HashMap<String, String>) -> CascadeItem {
         CascadeItem {
             id: nanoid!(),
-            created_time: SystemTime::now()
+            created_nanos: SystemTime::now()
                 .duration_since(UNIX_EPOCH).unwrap().as_nanos(),
             // No content to begin with
             content: Default::default(),

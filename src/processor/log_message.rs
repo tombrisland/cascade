@@ -49,7 +49,7 @@ impl Process for LogMessage {
             let now = SystemTime::now()
                 .duration_since(UNIX_EPOCH).unwrap().as_nanos();
 
-            let elapsed_millis: f64 = (now - item.created_time) as f64 / 1_000_000.0;
+            let elapsed_millis: f64 = (now - item.created_nanos) as f64 / 1_000_000.0;
 
             info!("Item number {} took {:.2}ms, contents {:?}", count, elapsed_millis, item);
         }

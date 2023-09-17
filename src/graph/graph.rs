@@ -25,7 +25,7 @@ pub struct CascadeGraph {
     pub(crate) component_registry: ComponentRegistry,
 
     pub graph_internal: GraphInternal,
-    pub edge_state: HashMap<EdgeIndex, Arc<Connection>>,
+    pub connection_map: HashMap<EdgeIndex, Arc<Connection>>,
 }
 
 impl CascadeGraph {
@@ -59,13 +59,13 @@ impl CascadeGraph {
     pub fn find_or_create(&mut self, conn_def: &(EdgeIndex, ConnectionDefinition)) -> Arc<Connection> {
         let (idx, def) = conn_def;
 
-        if !self.edge_state.contains_key(&idx) {
+        if !self.connection_map.contains_key(&idx) {
             let connection = Arc::new(Connection::new(def.clone()));
 
-            self.edge_state.insert(idx.clone(), connection);
+            self.connection_map.insert(idx.clone(), connection);
         }
 
-        self.edge_state.get(&idx).unwrap().clone()
+        self.connection_map.get(&idx).unwrap().clone()
     }
 
     pub fn get_connections(&mut self, node_idx: NodeIndex) -> ConnectionDetails {
