@@ -5,10 +5,10 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::component::{ComponentError, NamedComponent};
-use crate::connection::Connections;
+use crate::component::{NamedComponent, Process};
+use crate::component::error::ComponentError;
+use crate::component::execution::ComponentEnv;
 use crate::graph::item::CascadeItem;
-use crate::producer::Produce;
 
 #[derive(Serialize, Deserialize)]
 pub struct GenerateItem {
@@ -25,20 +25,20 @@ impl NamedComponent for GenerateItem {
 }
 
 #[async_trait]
-impl Produce for GenerateItem {
-    fn create(config: Value) -> Arc<dyn Produce>
+impl Process for GenerateItem {
+    fn create_from_json(config: Value) -> Arc<dyn Process>
     {
         let generate_item: GenerateItem = serde_json::from_value(config).unwrap();
 
         Arc::new(generate_item)
     }
 
-    async fn produce(&self, output: Connections) -> Result<i32, ComponentError> {
+    async fn process(&self, execution: &mut ComponentEnv) -> Result<(), ComponentError> {
         // Send as many as permitted by batch_size
         for _ in 0..self.batch_size {
-            output.send(CascadeItem::new(HashMap::new())).await.unwrap();
+            execution.send_default(CascadeItem::new(HashMap::new())).await.unwrap();
         }
 
-        Ok(self.batch_size)
+        Ok(())
     }
 }

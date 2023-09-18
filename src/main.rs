@@ -1,21 +1,18 @@
 #![feature(fn_traits)]
 extern crate core;
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use log::LevelFilter;
 use tokio::sync::Mutex;
 
-use crate::component::NamedComponent;
-use crate::component_registry::registry::{ComponentMap, ComponentRegistry};
+use crate::component::{NamedComponent, Process};
+use crate::component_registry::{ComponentMap, ComponentRegistry};
 use crate::graph::controller::CascadeController;
 use crate::logger::SimpleLogger;
 use crate::processor::log_message::LogMessage;
-use crate::processor::Process;
 use crate::processor::update_properties::UpdateProperties;
 use crate::producer::generate_item::GenerateItem;
-use crate::producer::Produce;
 use crate::server::{CascadeService, ServerState};
 
 #[macro_use]
@@ -25,10 +22,12 @@ mod graph;
 mod logger;
 mod server;
 #[macro_use]
-mod processor;
+// mod processor;
 #[macro_use]
-mod producer;
+// mod producer;
 mod component_registry;
+mod processor;
+mod producer;
 
 static LOGGER: SimpleLogger = SimpleLogger;
 
@@ -38,15 +37,19 @@ async fn main() -> Result<(), hyper::Error> {
         .map(|()| log::set_max_level(LevelFilter::Info))
         .expect("Logger failed to initialise");
 
-    let mut processors: ComponentMap<Arc<dyn Process>> = HashMap::new();
-    processors.insert(LogMessage::type_name(), LogMessage::create);
-    processors.insert(UpdateProperties::type_name(), UpdateProperties::create);
+    let mut components: ComponentMap = Default::default();
 
-    let mut producers: ComponentMap<Arc<dyn Produce>> = HashMap::new();
-    producers.insert(GenerateItem::type_name(), GenerateItem::create);
+    components.insert(GenerateItem::type_name(), GenerateItem::create_from_json);
+    components.insert(LogMessage::type_name(), LogMessage::create_from_json);
+    components.insert(
+        UpdateProperties::type_name(),
+        UpdateProperties::create_from_json,
+    );
 
     let state = ServerState {
-        controller: Arc::new(Mutex::new(CascadeController::new(ComponentRegistry::new(processors, producers))))
+        controller: Arc::new(Mutex::new(CascadeController::new(ComponentRegistry::new(
+            components,
+        )))),
     };
 
     let service = CascadeService {

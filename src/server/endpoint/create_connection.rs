@@ -5,7 +5,7 @@ use hyper::body::Buf;
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use serde_json::Error;
 
-use crate::connection::ConnectionDefinition;
+use crate::connection::definition::ConnectionDefinition;
 use crate::graph::graph::GraphInternal;
 use crate::server::ServerState;
 use crate::server::util::response;

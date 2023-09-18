@@ -6,7 +6,7 @@ use petgraph::graph::NodeIndex;
 use serde_json::Error;
 use tokio::sync::MutexGuard;
 
-use crate::component::ComponentDefinition;
+use crate::component::definition::ComponentDefinition;
 use crate::graph::controller::CascadeController;
 use crate::server::ServerState;
 use crate::server::util::response;
@@ -21,15 +21,24 @@ pub async fn create_component(state: Arc<ServerState>, request: Request<Body>) -
     }
 
     let def: ComponentDefinition = result.unwrap();
-    let type_name: String = def.metadata.type_name.clone();
+    let type_name: String = def.type_name.clone();
 
     let mut controller_lock: MutexGuard<CascadeController> = state.controller.lock().await;
 
-    if !controller_lock.graph_definition.component_registry.is_type_known(&type_name) {
-        return response(StatusCode::BAD_REQUEST, format!("Component type {} not known", &type_name));
+    if !controller_lock
+        .component_registry
+        .is_known_component(&type_name)
+    {
+        return response(
+            StatusCode::BAD_REQUEST,
+            format!("Component type {} not known", &type_name),
+        );
     }
 
-    let node_idx: NodeIndex = controller_lock.graph_definition.graph_internal.add_node(def);
+    let node_idx: NodeIndex = controller_lock
+        .graph_definition
+        .graph_internal
+        .add_node(def);
 
     response(
         StatusCode::CREATED,

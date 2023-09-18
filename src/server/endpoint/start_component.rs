@@ -25,7 +25,7 @@ pub async fn start_component(state: Arc<ServerState>, request: Request<Body>) ->
     let idx = usize::from_str(x).unwrap();
 
     let mut controller_lock: MutexGuard<CascadeController> = state.controller.lock().await;
-    
+
     controller_lock.start_component(NodeIndex::new(idx)).await.unwrap();
 
     response(

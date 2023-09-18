@@ -7,9 +7,10 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::component::{ComponentError, NamedComponent};
+use crate::component::{NamedComponent, Process};
+use crate::component::error::ComponentError;
+use crate::component::execution::ComponentEnv;
 use crate::graph::item::CascadeItem;
-use crate::processor::Process;
 
 #[derive(Serialize, Deserialize)]
 pub struct LogMessageConfig {
@@ -24,14 +25,17 @@ pub struct LogMessage {
 }
 
 impl NamedComponent for LogMessage {
-    fn type_name() -> &'static str where Self: Sized {
+    fn type_name() -> &'static str
+        where
+            Self: Sized,
+    {
         "LogMessage"
     }
 }
 
 #[async_trait]
 impl Process for LogMessage {
-    fn create(config: Value) -> Arc<dyn Process> {
+    fn create_from_json(config: Value) -> Arc<dyn Process> {
         let config: LogMessageConfig = serde_json::from_value(config).unwrap();
 
         Arc::new(LogMessage {
@@ -40,20 +44,27 @@ impl Process for LogMessage {
         })
     }
 
-    async fn process(&self, item: CascadeItem) -> Result<CascadeItem, ComponentError> {
+    async fn process(&self, execution: &mut ComponentEnv) -> Result<(), ComponentError> {
+        let item: CascadeItem = execution.recv().await?;
+
         // Increment item count and fetch the value
         let count: usize = self.item_count.fetch_add(1, Ordering::SeqCst);
 
         // Only log every x results
         if count % self.config.log_every_x == 0 {
             let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH).unwrap().as_nanos();
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
 
             let elapsed_millis: f64 = (now - item.created_nanos) as f64 / 1_000_000.0;
 
-            info!("Item number {} took {:.2}ms, contents {:?}", count, elapsed_millis, item);
+            info!(
+                "Item number {} took {:.2}ms, contents {:?}",
+                count, elapsed_millis, item
+            );
         }
 
-        Ok(item)
+        execution.send_default(item).await
     }
 }

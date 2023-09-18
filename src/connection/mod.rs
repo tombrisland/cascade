@@ -1,74 +1,56 @@
-use std::ops::DerefMut;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicI32, Ordering};
-
-use serde::Deserialize;
+use futures::stream::{select_all, SelectAll};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::mpsc::error::SendError;
-use tokio::sync::Mutex;
+use tokio::sync::OwnedRwLockWriteGuard;
+use tokio_stream::wrappers::ReceiverStream;
+
+use definition::ConnectionDefinition;
 
 use crate::graph::item::CascadeItem;
 
-#[derive(Clone, Deserialize)]
-pub struct ConnectionDefinition {
-    pub from: usize,
-    pub to: usize,
+pub mod definition;
 
-    pub max_items: u32,
+pub struct ConnectionRead {
+    pub name: String,
+
+    rx: Option<Receiver<CascadeItem>>,
 }
 
-pub struct Connection {
-    item_count: AtomicI32,
-    max_items: u32,
+pub struct ConnectionWrite {
+    pub name: String,
 
-    // TODO no need to be mutex
-    tx: Mutex<Sender<CascadeItem>>,
-    rx: Mutex<Receiver<CascadeItem>>,
+    pub tx: Sender<CascadeItem>,
 }
 
-impl Connection {
-    pub fn new(def: ConnectionDefinition) -> Connection {
-        let (tx, rx): (Sender<CascadeItem>, Receiver<CascadeItem>) = channel(def.max_items as usize);
+pub fn create_connection(def: &ConnectionDefinition) -> (ConnectionRead, ConnectionWrite) {
+    let (tx, rx): (Sender<CascadeItem>, Receiver<CascadeItem>) = channel(def.max_items as usize);
 
-        Connection { item_count: Default::default(), max_items: def.max_items, tx: Mutex::new(tx), rx: Mutex::new(rx) }
-    }
-
-    pub async fn send(&self, value: CascadeItem) -> Result<(), SendError<CascadeItem>> {
-        let sender: &Sender<CascadeItem> = &*self.tx.lock().await;
-
-        self.item_count.fetch_add(1, Ordering::Relaxed);
-
-        sender.send(value).await
-    }
-
-    pub async fn recv(&self) -> Option<CascadeItem> {
-        let mut guard = self.rx.lock().await;
-
-        let receiver: &mut Receiver<CascadeItem> = guard.deref_mut();
-
-        self.item_count.fetch_add(-1, Ordering::Relaxed);
-
-        receiver.recv().await
-    }
+    (
+        ConnectionRead {
+            name: def.name.clone(),
+            rx: Some(rx),
+        },
+        ConnectionWrite {
+            name: def.name.clone(),
+            tx,
+        },
+    )
 }
 
-#[derive(Clone)]
-pub struct Connections {
-    pub connections: Vec<Arc<Connection>>,
-}
+pub type IncomingStream = SelectAll<ReceiverStream<CascadeItem>>;
 
-impl Connections {
-    pub fn new(connections: Vec<Arc<Connection>>) -> Connections {
-        Connections {
-            connections
-        }
+impl ConnectionRead {
+    pub fn get_receiver_stream(&mut self) -> ReceiverStream<CascadeItem> {
+        self.rx.take().map(ReceiverStream::new).unwrap()
     }
 
-    pub async fn send(&self, value: CascadeItem) -> Result<(), SendError<CascadeItem>> {
-        for connection in &self.connections {
-            connection.send(value.clone()).await?
-        }
+    pub async fn create_incoming_stream(
+        mut incoming: Vec<OwnedRwLockWriteGuard<ConnectionRead>>,
+    ) -> IncomingStream {
+        let streams: Vec<ReceiverStream<CascadeItem>> = incoming
+            .iter_mut()
+            .map(|conn| conn.get_receiver_stream())
+            .collect();
 
-        Ok(())
+        select_all(streams)
     }
 }

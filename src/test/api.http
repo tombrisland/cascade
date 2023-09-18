@@ -1,0 +1,97 @@
+PUT http://localhost:3000/create_component
+Content-Type: application/json
+
+{
+  "type_name": "GenerateItem",
+  "display_name": "Generate some items",
+  "component_type": "Producer",
+  "config": {
+    "batch_size": 1
+  }
+}
+
+<> 2023-09-19T133312.201.txt
+<> 2023-09-19T132918.201.txt
+<> 2023-09-19T132827.201.txt
+<> 2023-09-19T132726.201.txt
+<> 2023-09-19T132554.201.txt
+<> 2023-09-19T132226.201.txt
+<> 2023-09-19T132018.400.txt
+<> 2023-09-19T131848.400.txt
+<> 2023-09-19T131413.400.txt
+<> 2023-09-19T131142.400.txt
+<> 2023-09-17T003523.201.txt
+
+###
+PUT http://localhost:3000/create_component
+Content-Type: application/json
+
+{
+  "type_name": "LogMessage",
+  "display_name": "Log a message",
+  "component_type": "Processor",
+  "config": {
+    "log_every_x": 10000
+  }
+}
+
+<> 2023-09-19T133314.201.txt
+<> 2023-09-19T132918-1.201.txt
+<> 2023-09-19T132827-1.201.txt
+<> 2023-09-19T132726-1.201.txt
+<> 2023-09-19T132610.201.txt
+<> 2023-09-19T132415.201.txt
+<> 2023-09-19T131849.400.txt
+<> 2023-09-19T131413-1.400.txt
+<> 2023-09-19T131143.400.txt
+<> 2023-09-17T003523-1.201.txt
+<> 2023-09-17T000601-1.201.txt
+
+###
+PUT http://localhost:3000/create_connection
+Content-Type: application/json
+
+{
+  "name": "default",
+  "from": 0,
+  "to": 1,
+  "max_items": 5
+}
+
+<> 2023-09-19T133318.201.txt
+<> 2023-09-19T132918-2.201.txt
+<> 2023-09-19T132827-2.201.txt
+<> 2023-09-19T132726-2.201.txt
+<> 2023-09-19T132614.201.txt
+<> 2023-09-19T132434.201.txt
+<> 2023-09-19T132420.400.txt
+<> 2023-09-19T131849-1.400.txt
+<> 2023-09-19T131413-2.400.txt
+<> 2023-09-19T131143-1.400.txt
+<> 2023-09-17T003523-2.201.txt
+<> 2023-09-17T000601-2.201.txt
+
+###
+GET http://localhost:3000/start_component?node_idx=0
+
+<> 2023-09-19T133321.200.txt
+<> 2023-09-19T132918.200.txt
+<> 2023-09-19T132832.200.txt
+<> 2023-09-19T132726.200.txt
+<> 2023-09-19T132617.200.txt
+<> 2023-09-19T132438.200.txt
+<> 2023-09-19T132258.200.txt
+<> 2023-09-17T003523.200.txt
+<> 2023-09-17T000601.200.txt
+
+###
+GET http://localhost:3000/start_component?node_idx=1
+
+<> 2023-09-19T133328.200.txt
+<> 2023-09-19T132948.200.txt
+<> 2023-09-19T132726-1.200.txt
+<> 2023-09-19T132620.200.txt
+<> 2023-09-19T132440.200.txt
+<> 2023-09-17T003523-1.200.txt
+<> 2023-09-17T000601-1.200.txt
+
