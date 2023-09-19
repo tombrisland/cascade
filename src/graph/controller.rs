@@ -3,23 +3,17 @@ use std::sync::Arc;
 
 use log::info;
 use petgraph::graph::{EdgeIndex, NodeIndex};
-use tokio::sync::{OwnedRwLockWriteGuard, RwLock};
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::component::component::Component;
 use crate::component::definition::ComponentDefinition;
 use crate::component::execution::ExecutionEnvironment;
 use crate::component::Process;
 use crate::component_registry::ComponentRegistry;
-use crate::connection::{ConnectionRead, ConnectionWrite, create_connection, IncomingStream};
+use crate::connection::Connection;
 use crate::connection::definition::ConnectionDefinition;
 use crate::graph::error::StartComponentError;
 use crate::graph::graph::CascadeGraph;
-
-#[derive(Debug)]
-pub struct Connection {
-    read: Arc<RwLock<ConnectionRead>>,
-    write: Arc<ConnectionWrite>
-}
 
 // Control the execution of a FlowGraph
 pub struct CascadeController {
@@ -49,14 +43,10 @@ impl CascadeController {
             .unwrap();
 
         if !self.connections.read().await.contains_key(idx) {
-            let (read, write) = create_connection(def);
-
-            let connection = Connection {
-                read: Arc::new(RwLock::new(read)),
-                write: Arc::new(write),
-            };
-
-            self.connections.write().await.insert(idx.clone(), connection);
+            self.connections
+                .write()
+                .await
+                .insert(idx.clone(), Connection::new(def));
         }
     }
 
@@ -86,37 +76,29 @@ impl CascadeController {
             def.component_type, def.type_name, component.metadata.id
         );
 
+        let graph: CascadeGraph = graph.clone();
         let implementation: Arc<dyn Process> = component.implementation;
 
-        let graph: CascadeGraph = graph.clone();
+        let connections: Arc<RwLock<HashMap<EdgeIndex, Connection>>> =
+            Arc::clone(&self.connections);
+        let connections_lock: RwLockReadGuard<HashMap<EdgeIndex, Connection>> =
+            connections.read().await;
 
-        let connections : Arc<RwLock<HashMap<EdgeIndex, Connection>>> = Arc::clone(&self.connections);
+        let connections_outgoing = graph
+            .get_outgoing_for_node(node_idx)
+            .iter()
+            .map(|edge_idx| connections_lock.get(edge_idx).unwrap())
+            .collect();
+        let connections_incoming = graph
+            .get_incoming_for_node(node_idx)
+            .iter()
+            .map(|edge_idx| connections_lock.get(edge_idx).unwrap())
+            .collect();
 
-        let connections_lock = connections.read().await;
-
-        let mut connection_writes: Vec<Arc<ConnectionWrite>> = vec![];
-
-        for edge_idx in graph.get_outgoing_for_node(node_idx) {
-            let connection: &Connection = connections_lock.get(&edge_idx).unwrap();
-
-            connection_writes.push(Arc::clone(&connection.write))
-        }
-
-        let mut connection_read_locks: Vec<OwnedRwLockWriteGuard<ConnectionRead>> = vec![];
-
-        for edge_idx in graph.get_incoming_for_node(node_idx) {
-            let connection: &Connection = connections_lock.get(&edge_idx).unwrap();
-
-            connection_read_locks.push(connection.read.clone().write_owned().await);
-        }
-
-        let incoming_stream: IncomingStream =
-            ConnectionRead::create_incoming_stream(connection_read_locks).await;
-
-        let mut execution = ExecutionEnvironment::new(incoming_stream, connection_writes);
+        let mut execution =
+            ExecutionEnvironment::new(connections_incoming, connections_outgoing).await;
 
         tokio::spawn(async move {
-
             loop {
                 implementation.process(&mut execution).await.unwrap();
             }

@@ -14,7 +14,7 @@ pub struct CascadeGraph {
 }
 
 impl CascadeGraph {
-    pub fn get_node_indices(&self) -> NodeIndices {
+    pub fn _get_node_indices(&self) -> NodeIndices {
         self.graph_internal.node_indices()
     }
 

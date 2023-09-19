@@ -1,3 +1,4 @@
+// Required to call trait fns dynamically
 #![feature(fn_traits)]
 extern crate core;
 
@@ -15,16 +16,11 @@ use crate::processor::update_properties::UpdateProperties;
 use crate::producer::generate_item::GenerateItem;
 use crate::server::{CascadeService, ServerState};
 
-#[macro_use]
 mod component;
 mod connection;
 mod graph;
 mod logger;
 mod server;
-#[macro_use]
-// mod processor;
-#[macro_use]
-// mod producer;
 mod component_registry;
 mod processor;
 mod producer;

@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
+use futures::future::join_all;
 use futures::stream::{select_all, SelectAll};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::OwnedRwLockWriteGuard;
+use tokio::sync::RwLock;
 use tokio_stream::wrappers::ReceiverStream;
 
 use definition::ConnectionDefinition;
@@ -9,50 +12,27 @@ use crate::graph::item::CascadeItem;
 
 pub mod definition;
 
-#[derive(Debug)]
-pub struct ConnectionRead {
+pub struct Connection {
     pub name: String,
 
-    rx: Option<Receiver<CascadeItem>>,
-}
-
-#[derive(Debug)]
-pub struct ConnectionWrite {
-    pub name: String,
-
-    pub tx: Sender<CascadeItem>,
-}
-
-pub fn create_connection(def: &ConnectionDefinition) -> (ConnectionRead, ConnectionWrite) {
-    let (tx, rx): (Sender<CascadeItem>, Receiver<CascadeItem>) = channel(def.max_items as usize);
-
-    (
-        ConnectionRead {
-            name: def.name.clone(),
-            rx: Some(rx),
-        },
-        ConnectionWrite {
-            name: def.name.clone(),
-            tx,
-        },
-    )
+    pub rx: Arc<RwLock<Option<Receiver<CascadeItem>>>>,
+    pub tx: Arc<Sender<CascadeItem>>,
 }
 
 pub type IncomingStream = SelectAll<ReceiverStream<CascadeItem>>;
 
-impl ConnectionRead {
-    pub fn get_receiver_stream(&mut self) -> ReceiverStream<CascadeItem> {
-        self.rx.take().map(ReceiverStream::new).unwrap()
+impl Connection {
+    pub fn new(def: &ConnectionDefinition) -> Connection {
+        let (tx, rx): (Sender<CascadeItem>, Receiver<CascadeItem>) = channel(def.max_items as usize);
+
+        Connection {
+            name: def.name.clone(),
+            rx: Arc::new(RwLock::new(Some(rx))),
+            tx: Arc::new(tx),
+        }
     }
 
-    pub async fn create_incoming_stream(
-        mut incoming: Vec<OwnedRwLockWriteGuard<ConnectionRead>>,
-    ) -> IncomingStream {
-        let streams: Vec<ReceiverStream<CascadeItem>> = incoming
-            .iter_mut()
-            .map(|conn| conn.get_receiver_stream())
-            .collect();
-
-        select_all(streams)
+    pub async fn get_receiver_stream(&self) -> ReceiverStream<CascadeItem> {
+        self.rx.clone().write_owned().await.take().map(ReceiverStream::new).unwrap()
     }
 }
