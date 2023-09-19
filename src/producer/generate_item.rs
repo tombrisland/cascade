@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::component::{NamedComponent, Process};
 use crate::component::error::ComponentError;
-use crate::component::execution::ComponentEnv;
+use crate::component::execution::ExecutionEnvironment;
 use crate::graph::item::CascadeItem;
 
 #[derive(Serialize, Deserialize)]
@@ -33,7 +33,7 @@ impl Process for GenerateItem {
         Arc::new(generate_item)
     }
 
-    async fn process(&self, execution: &mut ComponentEnv) -> Result<(), ComponentError> {
+    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
         // Send as many as permitted by batch_size
         for _ in 0..self.batch_size {
             execution.send_default(CascadeItem::new(HashMap::new())).await.unwrap();

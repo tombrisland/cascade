@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::component::{NamedComponent, Process};
 use crate::component::error::ComponentError;
-use crate::component::execution::ComponentEnv;
+use crate::component::execution::ExecutionEnvironment;
 use crate::graph::item::CascadeItem;
 
 #[derive(Serialize, Deserialize)]
@@ -33,7 +33,7 @@ impl Process for UpdateProperties {
         Arc::new(update_properties)
     }
 
-    async fn process(&self, execution: &mut ComponentEnv) -> Result<(), ComponentError> {
+    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
         let mut item: CascadeItem = execution.recv().await?;
 
         // Loop through updates and update FlowItem

@@ -9,12 +9,14 @@ use crate::graph::item::CascadeItem;
 
 pub mod definition;
 
+#[derive(Debug)]
 pub struct ConnectionRead {
     pub name: String,
 
     rx: Option<Receiver<CascadeItem>>,
 }
 
+#[derive(Debug)]
 pub struct ConnectionWrite {
     pub name: String,
 

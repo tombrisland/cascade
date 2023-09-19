@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use crate::component::{NamedComponent, Process};
 use crate::component::error::ComponentError;
-use crate::component::execution::ComponentEnv;
+use crate::component::execution::ExecutionEnvironment;
 use crate::graph::item::CascadeItem;
 
 #[derive(Serialize, Deserialize)]
@@ -44,7 +44,7 @@ impl Process for LogMessage {
         })
     }
 
-    async fn process(&self, execution: &mut ComponentEnv) -> Result<(), ComponentError> {
+    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
         let item: CascadeItem = execution.recv().await?;
 
         // Increment item count and fetch the value

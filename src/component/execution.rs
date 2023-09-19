@@ -2,18 +2,16 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures::stream::SelectAll;
-use futures::StreamExt;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::ReceiverStream;
 
 use crate::component::error::ComponentError;
 use crate::connection::ConnectionWrite;
-use crate::graph::graph::CascadeGraph;
 use crate::graph::item::CascadeItem;
 
 type IncomingStream = SelectAll<ReceiverStream<CascadeItem>>;
 
-pub struct ComponentEnv {
+pub struct ExecutionEnvironment {
     // Stream from all incoming connections
     incoming_stream: Option<IncomingStream>,
 
@@ -22,19 +20,18 @@ pub struct ComponentEnv {
 
 pub const DEFAULT_CONNECTION: &str = "default";
 
-impl ComponentEnv {
+impl ExecutionEnvironment {
     pub fn new(
-        graph: &CascadeGraph,
         incoming_stream: IncomingStream,
         outgoing: Vec<Arc<ConnectionWrite>>,
-    ) -> ComponentEnv {
+    ) -> ExecutionEnvironment {
         let outgoing_connections: HashMap<String, Arc<ConnectionWrite>> = outgoing
             .into_iter()
             .map(|conn| (conn.name.clone(), conn))
             .collect();
 
-        ComponentEnv {
-            incoming_stream,
+        ExecutionEnvironment {
+            incoming_stream: Some(incoming_stream),
             outgoing_connections,
         }
     }
