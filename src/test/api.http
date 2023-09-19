@@ -10,17 +10,20 @@ Content-Type: application/json
   }
 }
 
-<> 2023-09-19T133312.201.txt
-<> 2023-09-19T132918.201.txt
-<> 2023-09-19T132827.201.txt
-<> 2023-09-19T132726.201.txt
-<> 2023-09-19T132554.201.txt
-<> 2023-09-19T132226.201.txt
-<> 2023-09-19T132018.400.txt
-<> 2023-09-19T131848.400.txt
-<> 2023-09-19T131413.400.txt
-<> 2023-09-19T131142.400.txt
-<> 2023-09-17T003523.201.txt
+###
+PUT http://localhost:3000/create_component
+Content-Type: application/json
+
+{
+  "type_name": "UpdateProperties",
+  "display_name": "Update some properties",
+  "component_type": "Processor",
+  "config": {
+    "updates": {
+      "key": "value"
+    }
+  }
+}
 
 ###
 PUT http://localhost:3000/create_component
@@ -58,6 +61,17 @@ Content-Type: application/json
   "max_items": 5
 }
 
+###
+PUT http://localhost:3000/create_connection
+Content-Type: application/json
+
+{
+  "name": "default",
+  "from": 1,
+  "to": 2,
+  "max_items": 5
+}
+
 <> 2023-09-19T133318.201.txt
 <> 2023-09-19T132918-2.201.txt
 <> 2023-09-19T132827-2.201.txt
@@ -86,6 +100,9 @@ GET http://localhost:3000/start_component?node_idx=0
 
 ###
 GET http://localhost:3000/start_component?node_idx=1
+
+###
+GET http://localhost:3000/start_component?node_idx=2
 
 <> 2023-09-19T133328.200.txt
 <> 2023-09-19T132948.200.txt

@@ -24,8 +24,8 @@ pub async fn create_connection(state: Arc<ServerState>, request: Request<Body>) 
     let from: NodeIndex = NodeIndex::new(def.from);
     let to: NodeIndex = NodeIndex::new(def.to);
 
-    let mut controller_lock = state.controller.lock().await;
-    let graph_internal: &mut GraphInternal = &mut controller_lock.graph_definition.graph_internal;
+    let controller_lock = state.controller.lock().await;
+    let graph_internal: &mut GraphInternal = &mut controller_lock.graph_definition.lock().await.graph_internal;
 
     let index: EdgeIndex = graph_internal.add_edge(from, to, def);
 

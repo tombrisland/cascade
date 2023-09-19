@@ -1,6 +1,6 @@
-use petgraph::{Direction, Graph, Incoming, Outgoing};
 use petgraph::graph::{EdgeIndex, NodeIndex, NodeIndices};
 use petgraph::visit::EdgeRef;
+use petgraph::{Direction, Graph, Incoming, Outgoing};
 
 use crate::component::definition::ComponentDefinition;
 use crate::connection::definition::ConnectionDefinition;
@@ -26,29 +26,22 @@ impl CascadeGraph {
         self.graph_internal.edge_weight(edge_idx)
     }
 
-    pub fn get_incoming_for_node(&self, node_idx: NodeIndex) -> Vec<EdgeIndex> {
-        self.get_connections_directed(node_idx, Incoming)
-    }
-
-    pub fn get_outgoing_for_node(&self, node_idx: NodeIndex) -> Vec<EdgeIndex> {
-        self.get_connections_directed(node_idx, Outgoing)
-    }
-
-    pub fn get_edges_for_node(&self, node_idx: NodeIndex) -> Vec<EdgeIndex> {
+    pub fn get_edges_for_node(&self, node_idx: NodeIndex) -> Vec<(EdgeIndex, Direction)> {
         self.graph_internal
-            .edges(node_idx)
-            .map(|edge| edge.id() as EdgeIndex)
-            .collect()
-    }
-
-    fn get_connections_directed(
-        &self,
-        node_idx: NodeIndex,
-        direction: Direction,
-    ) -> Vec<EdgeIndex> {
-        self.graph_internal
-            .edges_directed(node_idx, direction)
-            .map(|edge| edge.id() as EdgeIndex)
+            .edges_directed(node_idx, Incoming)
+            // The existing .edges impl only returns Outgoing edges
+            .chain(self.graph_internal.edges_directed(node_idx, Outgoing))
+            .map(|edge| {
+                (
+                    edge.id(),
+                    // Include direction in tuple
+                    if edge.source() == node_idx {
+                        Outgoing
+                    } else {
+                        Incoming
+                    },
+                )
+            })
             .collect()
     }
 }

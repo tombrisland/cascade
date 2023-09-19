@@ -1,7 +1,7 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
-use futures::future::join_all;
-use futures::stream::{select_all, SelectAll};
+use petgraph::Direction;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::RwLock;
 use tokio_stream::wrappers::ReceiverStream;
@@ -19,11 +19,10 @@ pub struct Connection {
     pub tx: Arc<Sender<CascadeItem>>,
 }
 
-pub type IncomingStream = SelectAll<ReceiverStream<CascadeItem>>;
-
 impl Connection {
     pub fn new(def: &ConnectionDefinition) -> Connection {
-        let (tx, rx): (Sender<CascadeItem>, Receiver<CascadeItem>) = channel(def.max_items as usize);
+        let (tx, rx): (Sender<CascadeItem>, Receiver<CascadeItem>) =
+            channel(def.max_items as usize);
 
         Connection {
             name: def.name.clone(),
@@ -33,6 +32,31 @@ impl Connection {
     }
 
     pub async fn get_receiver_stream(&self) -> ReceiverStream<CascadeItem> {
-        self.rx.clone().write_owned().await.take().map(ReceiverStream::new).unwrap()
+        self.rx
+            .clone()
+            .write_owned()
+            .await
+            .take()
+            .map(ReceiverStream::new)
+            .unwrap()
+    }
+}
+
+pub struct DirectedConnections {
+    pub connections: HashMap<Direction, Vec<Arc<Connection>>>,
+}
+
+impl DirectedConnections {
+    pub fn new(connections_list: Vec<(Direction, Arc<Connection>)>) -> DirectedConnections {
+        let mut connections: HashMap<Direction, Vec<Arc<Connection>>> = Default::default();
+
+        for (direction, connection) in connections_list {
+            connections
+                .entry(direction)
+                .or_insert_with(Vec::new)
+                .push(connection);
+        }
+
+        DirectedConnections { connections }
     }
 }

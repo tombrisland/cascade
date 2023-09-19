@@ -3,12 +3,13 @@ use std::sync::Arc;
 
 use futures::future::join_all;
 use futures::stream::{select_all, SelectAll};
+use petgraph::{Incoming, Outgoing};
 use tokio::sync::mpsc::Sender;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 
 use crate::component::error::ComponentError;
-use crate::connection::Connection;
+use crate::connection::DirectedConnections;
 use crate::graph::item::CascadeItem;
 
 type IncomingStream = SelectAll<ReceiverStream<CascadeItem>>;
@@ -23,12 +24,12 @@ pub struct ExecutionEnvironment {
 pub const DEFAULT_CONNECTION: &str = "default";
 
 impl ExecutionEnvironment {
-    pub async fn new(
-        connections_incoming: Vec<&Connection>,
-        connections_outgoing: Vec<&Connection>,
-    ) -> ExecutionEnvironment {
+    pub async fn new(directed_connections: DirectedConnections) -> ExecutionEnvironment {
         let incoming_streams: Vec<ReceiverStream<CascadeItem>> = join_all(
-            connections_incoming
+            directed_connections
+                .connections
+                .get(&Incoming)
+                .unwrap_or(&Vec::new())
                 .into_iter()
                 .map(|conn| conn.get_receiver_stream()),
         )
@@ -36,7 +37,10 @@ impl ExecutionEnvironment {
 
         let incoming_stream: IncomingStream = select_all(incoming_streams);
 
-        let outgoing_connections: HashMap<String, Arc<Sender<CascadeItem>>> = connections_outgoing
+        let outgoing_connections: HashMap<String, Arc<Sender<CascadeItem>>> = directed_connections
+            .connections
+            .get(&Outgoing)
+            .unwrap_or(&Vec::new())
             .iter()
             .map(|conn| (conn.name.clone(), Arc::clone(&conn.tx)))
             .collect();

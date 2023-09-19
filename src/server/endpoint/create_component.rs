@@ -23,7 +23,7 @@ pub async fn create_component(state: Arc<ServerState>, request: Request<Body>) -
     let def: ComponentDefinition = result.unwrap();
     let type_name: String = def.type_name.clone();
 
-    let mut controller_lock: MutexGuard<CascadeController> = state.controller.lock().await;
+    let controller_lock: MutexGuard<CascadeController> = state.controller.lock().await;
 
     if !controller_lock
         .component_registry
@@ -37,6 +37,7 @@ pub async fn create_component(state: Arc<ServerState>, request: Request<Body>) -
 
     let node_idx: NodeIndex = controller_lock
         .graph_definition
+        .lock().await
         .graph_internal
         .add_node(def);
 

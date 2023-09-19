@@ -2,51 +2,42 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use log::info;
+use petgraph::Direction;
 use petgraph::graph::{EdgeIndex, NodeIndex};
-use tokio::sync::{RwLock, RwLockReadGuard};
+use tokio::sync::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
+use tokio::task::JoinHandle;
 
 use crate::component::component::Component;
 use crate::component::definition::ComponentDefinition;
 use crate::component::execution::ExecutionEnvironment;
 use crate::component::Process;
 use crate::component_registry::ComponentRegistry;
-use crate::connection::Connection;
+use crate::connection::{Connection, DirectedConnections};
 use crate::connection::definition::ConnectionDefinition;
 use crate::graph::error::StartComponentError;
 use crate::graph::graph::CascadeGraph;
 
-// Control the execution of a FlowGraph
+type ConnectionsLock<'a> = RwLockWriteGuard<'a, HashMap<EdgeIndex, Arc<Connection>>>;
+
 pub struct CascadeController {
     pub component_registry: ComponentRegistry,
 
-    pub graph_definition: CascadeGraph,
+    pub graph_definition: Arc<Mutex<CascadeGraph>>,
 
-    pub connections: Arc<RwLock<HashMap<EdgeIndex, Connection>>>,
+    pub component_handles: HashMap<NodeIndex, JoinHandle<()>>,
+    connections: Arc<RwLock<HashMap<EdgeIndex, Arc<Connection>>>>,
 }
 
 impl CascadeController {
     pub fn new(component_registry: ComponentRegistry) -> CascadeController {
         CascadeController {
-            graph_definition: CascadeGraph {
+            graph_definition: Arc::new(Mutex::new(CascadeGraph {
                 graph_internal: Default::default(),
-            },
+            })),
             component_registry,
 
             connections: Default::default(),
-        }
-    }
-
-    pub async fn init_channels(&mut self, idx: &EdgeIndex) {
-        let def: &ConnectionDefinition = self
-            .graph_definition
-            .get_connection_for_edge(idx.clone())
-            .unwrap();
-
-        if !self.connections.read().await.contains_key(idx) {
-            self.connections
-                .write()
-                .await
-                .insert(idx.clone(), Connection::new(def));
+            component_handles: Default::default(),
         }
     }
 
@@ -54,11 +45,11 @@ impl CascadeController {
         &mut self,
         node_idx: NodeIndex,
     ) -> Result<(), StartComponentError> {
-        for edge_idx in self.graph_definition.get_edges_for_node(node_idx) {
-            self.init_channels(&edge_idx).await;
-        }
+        let graph: MutexGuard<CascadeGraph> = self.graph_definition.lock().await;
+        let connections_lock: ConnectionsLock = self.connections.write().await;
 
-        let graph: &CascadeGraph = &self.graph_definition;
+        // Initialise any missing connections and return all relevant references
+        let directed_connections: DirectedConnections = init_connections_for_node(&graph, connections_lock, node_idx);
 
         // Fail if the index isn't present in the graph
         let def: &ComponentDefinition = graph
@@ -72,38 +63,52 @@ impl CascadeController {
             .ok_or(StartComponentError::MissingComponent(def.type_name.clone()))?;
 
         info!(
-            "Starting {:?};{} with id {}",
+            "[{:?}:{}] starting with id {}",
             def.component_type, def.type_name, component.metadata.id
         );
 
-        let graph: CascadeGraph = graph.clone();
         let implementation: Arc<dyn Process> = component.implementation;
 
-        let connections: Arc<RwLock<HashMap<EdgeIndex, Connection>>> =
-            Arc::clone(&self.connections);
-        let connections_lock: RwLockReadGuard<HashMap<EdgeIndex, Connection>> =
-            connections.read().await;
-
-        let connections_outgoing = graph
-            .get_outgoing_for_node(node_idx)
-            .iter()
-            .map(|edge_idx| connections_lock.get(edge_idx).unwrap())
-            .collect();
-        let connections_incoming = graph
-            .get_incoming_for_node(node_idx)
-            .iter()
-            .map(|edge_idx| connections_lock.get(edge_idx).unwrap())
-            .collect();
-
         let mut execution =
-            ExecutionEnvironment::new(connections_incoming, connections_outgoing).await;
+            ExecutionEnvironment::new(directed_connections).await;
 
-        tokio::spawn(async move {
+        let handle: JoinHandle<()> = tokio::spawn(async move {
             loop {
                 implementation.process(&mut execution).await.unwrap();
             }
         });
 
+        self.component_handles.insert(node_idx, handle);
+
         Ok(())
     }
+}
+
+
+pub fn init_connections_for_node<'a>(
+    graph: &MutexGuard<CascadeGraph>,
+    mut connections_lock: ConnectionsLock,
+    node_idx: NodeIndex,
+) -> DirectedConnections {
+    let edge_indices: Vec<(EdgeIndex, Direction)> =
+        graph.get_edges_for_node(node_idx);
+
+    DirectedConnections::new(
+        edge_indices
+            .iter()
+            .map(|(edge_idx, direction)| {
+                let def: &ConnectionDefinition = graph
+                    .get_connection_for_edge(edge_idx.clone())
+                    .unwrap();
+
+                let connection: Arc<Connection> = Arc::clone(
+                    connections_lock
+                        .entry(edge_idx.clone())
+                        .or_insert_with(|| Arc::new(Connection::new(def))),
+                );
+
+                (direction.clone(), connection)
+            })
+            .collect(),
+    )
 }
