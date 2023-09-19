@@ -9,11 +9,11 @@ use tokio::sync::Mutex;
 
 use crate::component::{NamedComponent, Process};
 use crate::component_registry::{ComponentMap, ComponentRegistry};
+use crate::component_std::generate_item::GenerateItem;
+use crate::component_std::log_message::LogMessage;
+use crate::component_std::update_properties::UpdateProperties;
 use crate::graph::controller::CascadeController;
 use crate::logger::SimpleLogger;
-use crate::processor::log_message::LogMessage;
-use crate::processor::update_properties::UpdateProperties;
-use crate::producer::generate_item::GenerateItem;
 use crate::server::{CascadeService, ServerState};
 
 mod component;
@@ -22,8 +22,7 @@ mod graph;
 mod logger;
 mod server;
 mod component_registry;
-mod processor;
-mod producer;
+mod component_std;
 
 static LOGGER: SimpleLogger = SimpleLogger;
 

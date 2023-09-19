@@ -9,7 +9,7 @@ use tokio::sync::MutexGuard;
 use crate::component::definition::ComponentDefinition;
 use crate::graph::controller::CascadeController;
 use crate::server::ServerState;
-use crate::server::util::response;
+use crate::server::endpoint::http_util::response;
 
 pub async fn create_component(state: Arc<ServerState>, request: Request<Body>) -> Response<Body> {
     let whole_body = hyper::body::to_bytes(request).await.unwrap();

@@ -19,3 +19,22 @@ impl Display for StartComponentError {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum StopComponentError {
+    ComponentNotStarted(usize),
+    FailedToStop,
+}
+
+impl Display for StopComponentError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StopComponentError::ComponentNotStarted(idx) => {
+                f.write_fmt(format_args!("No component started for idx {}", idx))
+            }
+            StopComponentError::FailedToStop => {
+                f.write_str("Component failed to stop")
+            }
+        }
+    }
+}

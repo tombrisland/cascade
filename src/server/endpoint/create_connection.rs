@@ -8,7 +8,7 @@ use serde_json::Error;
 use crate::connection::definition::ConnectionDefinition;
 use crate::graph::graph::GraphInternal;
 use crate::server::ServerState;
-use crate::server::util::response;
+use crate::server::endpoint::http_util::response;
 
 pub async fn create_connection(state: Arc<ServerState>, request: Request<Body>) -> Response<Body> {
     let whole_body = hyper::body::to_bytes(request).await.unwrap();

@@ -7,10 +7,10 @@ use petgraph::graph::NodeIndex;
 use tokio::sync::MutexGuard;
 
 use crate::graph::controller::CascadeController;
-use crate::server::ServerState;
 use crate::server::endpoint::http_util::response;
+use crate::server::ServerState;
 
-pub async fn start_component(state: Arc<ServerState>, request: Request<Body>) -> Response<Body> {
+pub async fn stop_component(state: Arc<ServerState>, request: Request<Body>) -> Response<Body> {
     let params: HashMap<String, String> = request
         .uri()
         .query()
@@ -26,13 +26,10 @@ pub async fn start_component(state: Arc<ServerState>, request: Request<Body>) ->
 
     let mut controller_lock: MutexGuard<CascadeController> = state.controller.lock().await;
 
-    controller_lock.start_component(NodeIndex::new(idx)).await.unwrap();
+    controller_lock
+        .stop_component(NodeIndex::new(idx))
+        .await
+        .unwrap();
 
-    response(
-        StatusCode::OK,
-        format!(
-            "Started component at id {}",
-            idx
-        ),
-    )
+    response(StatusCode::OK, format!("Stopped component at id {}", idx))
 }

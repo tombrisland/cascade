@@ -10,9 +10,9 @@ use crate::graph::controller::CascadeController;
 use crate::server::endpoint::create_component::create_component;
 use crate::server::endpoint::create_connection::create_connection;
 use crate::server::endpoint::start_component::start_component;
+use crate::server::endpoint::stop_component::stop_component;
 
 pub mod endpoint;
-mod util;
 
 static NOT_FOUND: &[u8] = b"Resource not found";
 
@@ -40,6 +40,7 @@ async fn router(
         (&Method::PUT, "/create_component") => create_component(state, req).await,
         (&Method::PUT, "/create_connection") => create_connection(state, req).await,
         (&Method::GET, "/start_component") => start_component(state, req).await,
+        (&Method::GET, "/stop_component") => stop_component(state, req).await,
         // Return 404 not found response.
         _ => Response::builder()
             .status(StatusCode::NOT_FOUND)

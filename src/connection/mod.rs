@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use petgraph::Direction;
+use petgraph::graph::EdgeIndex;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::RwLock;
 use tokio_stream::wrappers::ReceiverStream;
@@ -14,17 +15,19 @@ pub mod definition;
 
 pub struct Connection {
     pub name: String,
+    pub idx: EdgeIndex,
 
     pub rx: Arc<RwLock<Option<Receiver<CascadeItem>>>>,
     pub tx: Arc<Sender<CascadeItem>>,
 }
 
 impl Connection {
-    pub fn new(def: &ConnectionDefinition) -> Connection {
+    pub fn new(edge_idx: &EdgeIndex, def: &ConnectionDefinition) -> Connection {
         let (tx, rx): (Sender<CascadeItem>, Receiver<CascadeItem>) =
             channel(def.max_items as usize);
 
         Connection {
+            idx: edge_idx.clone(),
             name: def.name.clone(),
             rx: Arc::new(RwLock::new(Some(rx))),
             tx: Arc::new(tx),

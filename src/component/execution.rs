@@ -4,9 +4,9 @@ use std::sync::Arc;
 use futures::future::join_all;
 use futures::stream::{select_all, SelectAll};
 use petgraph::{Incoming, Outgoing};
-use tokio::sync::mpsc::Sender;
-use tokio_stream::StreamExt;
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::StreamExt;
 
 use crate::component::component::ComponentMetadata;
 use crate::component::error::ComponentError;
@@ -17,8 +17,11 @@ type IncomingStream = SelectAll<ReceiverStream<CascadeItem>>;
 
 pub struct ExecutionEnvironment {
     pub metadata: ComponentMetadata,
+
     // Stream from all incoming connections
     incoming_stream: Option<IncomingStream>,
+    // Keep track of the edge idx for each underlying stream
+    pub receiver_indexes: Vec<usize>,
 
     tx: HashMap<String, Arc<Sender<CascadeItem>>>,
 }
@@ -26,13 +29,20 @@ pub struct ExecutionEnvironment {
 pub const DEFAULT_CONNECTION: &str = "default";
 
 impl ExecutionEnvironment {
-    pub async fn new(metadata: ComponentMetadata, directed_connections: DirectedConnections) -> ExecutionEnvironment {
+    pub async fn new(
+        metadata: ComponentMetadata,
+        directed_connections: DirectedConnections,
+    ) -> ExecutionEnvironment {
+        let mut receiver_indexes: Vec<usize> = vec![];
+
         let incoming_streams: Vec<ReceiverStream<CascadeItem>> = join_all(
             directed_connections
                 .connections
                 .get(&Incoming)
                 .unwrap_or(&Vec::new())
                 .into_iter()
+                // Remember the order of these streams
+                .inspect(|conn| receiver_indexes.push(conn.idx.index()))
                 .map(|conn| conn.get_receiver_stream()),
         )
         .await;
@@ -50,6 +60,7 @@ impl ExecutionEnvironment {
         ExecutionEnvironment {
             metadata,
             incoming_stream: Some(incoming_stream),
+            receiver_indexes,
             tx: outgoing_connections,
         }
     }
@@ -85,5 +96,14 @@ impl ExecutionEnvironment {
     // Send to the default connection
     pub async fn send_default(&self, item: CascadeItem) -> Result<(), ComponentError> {
         self.send(DEFAULT_CONNECTION, item).await
+    }
+
+    pub fn take_receivers(&mut self) -> Option<Vec<Receiver<CascadeItem>>> {
+        self.incoming_stream.take().map(|stream| {
+            stream
+                .into_iter()
+                .map(|stream| stream.into_inner())
+                .collect()
+        })
     }
 }
