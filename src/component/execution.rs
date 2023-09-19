@@ -5,9 +5,10 @@ use futures::future::join_all;
 use futures::stream::{select_all, SelectAll};
 use petgraph::{Incoming, Outgoing};
 use tokio::sync::mpsc::Sender;
-use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
+use tokio_stream::wrappers::ReceiverStream;
 
+use crate::component::component::ComponentMetadata;
 use crate::component::error::ComponentError;
 use crate::connection::DirectedConnections;
 use crate::graph::item::CascadeItem;
@@ -15,6 +16,7 @@ use crate::graph::item::CascadeItem;
 type IncomingStream = SelectAll<ReceiverStream<CascadeItem>>;
 
 pub struct ExecutionEnvironment {
+    pub metadata: ComponentMetadata,
     // Stream from all incoming connections
     incoming_stream: Option<IncomingStream>,
 
@@ -24,7 +26,7 @@ pub struct ExecutionEnvironment {
 pub const DEFAULT_CONNECTION: &str = "default";
 
 impl ExecutionEnvironment {
-    pub async fn new(directed_connections: DirectedConnections) -> ExecutionEnvironment {
+    pub async fn new(metadata: ComponentMetadata, directed_connections: DirectedConnections) -> ExecutionEnvironment {
         let incoming_streams: Vec<ReceiverStream<CascadeItem>> = join_all(
             directed_connections
                 .connections
@@ -46,6 +48,7 @@ impl ExecutionEnvironment {
             .collect();
 
         ExecutionEnvironment {
+            metadata,
             incoming_stream: Some(incoming_stream),
             tx: outgoing_connections,
         }

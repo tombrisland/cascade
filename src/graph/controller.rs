@@ -1,19 +1,21 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
-use log::info;
-use petgraph::Direction;
+use log::{error, info};
 use petgraph::graph::{EdgeIndex, NodeIndex};
+use petgraph::Direction;
 use tokio::sync::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 use tokio::task::JoinHandle;
+use tokio::time::MissedTickBehavior::Delay;
+use tokio::time::{interval, Interval};
 
-use crate::component::component::Component;
+use crate::component::component::{Component, ComponentMetadata, Schedule};
 use crate::component::definition::ComponentDefinition;
 use crate::component::execution::ExecutionEnvironment;
-use crate::component::Process;
 use crate::component_registry::ComponentRegistry;
-use crate::connection::{Connection, DirectedConnections};
 use crate::connection::definition::ConnectionDefinition;
+use crate::connection::{Connection, DirectedConnections};
 use crate::graph::error::StartComponentError;
 use crate::graph::graph::CascadeGraph;
 
@@ -49,7 +51,8 @@ impl CascadeController {
         let connections_lock: ConnectionsLock = self.connections.write().await;
 
         // Initialise any missing connections and return all relevant references
-        let directed_connections: DirectedConnections = init_connections_for_node(&graph, connections_lock, node_idx);
+        let directed_connections: DirectedConnections =
+            init_connections_for_node(&graph, connections_lock, node_idx);
 
         // Fail if the index isn't present in the graph
         let def: &ComponentDefinition = graph
@@ -63,43 +66,64 @@ impl CascadeController {
             .ok_or(StartComponentError::MissingComponent(def.type_name.clone()))?;
 
         info!(
-            "[{:?}:{}] starting with id {}",
+            "[{:?}:{}:{}] is starting",
             def.component_type, def.type_name, component.metadata.id
         );
 
-        let implementation: Arc<dyn Process> = component.implementation;
-
+        // Execution env abstracts recv and sending of items
         let mut execution =
-            ExecutionEnvironment::new(directed_connections).await;
+            ExecutionEnvironment::new(component.metadata.clone(), directed_connections).await;
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
-            loop {
-                implementation.process(&mut execution).await.unwrap();
-            }
-        });
+            match component.schedule {
+                // Allow the component to manage it's own scheduling
+                Schedule::Unbounded => loop {
+                    Self::run_component(&component, &mut execution).await;
+                },
+                // Schedule the component at set intervals
+                Schedule::Interval { period_millis } => {
+                    let mut interval: Interval = interval(Duration::from_millis(period_millis));
+                    interval.set_missed_tick_behavior(Delay);
 
+                    // Create a task to run the component in
+                    loop {
+                        interval.tick().await;
+
+                        Self::run_component(&component, &mut execution).await;
+                    }
+                }
+            };
+        });
         self.component_handles.insert(node_idx, handle);
 
         Ok(())
     }
+
+    async fn run_component(component: &Component, environment: &mut ExecutionEnvironment) {
+        let metadata: &ComponentMetadata = &component.metadata;
+
+        match component.implementation.process(environment).await {
+            Ok(_) => {}
+            Err(err) => {
+                error!("{} failed with {:?}", metadata, err)
+            }
+        }
+    }
 }
 
-
-pub fn init_connections_for_node<'a>(
+fn init_connections_for_node<'a>(
     graph: &MutexGuard<CascadeGraph>,
     mut connections_lock: ConnectionsLock,
     node_idx: NodeIndex,
 ) -> DirectedConnections {
-    let edge_indices: Vec<(EdgeIndex, Direction)> =
-        graph.get_edges_for_node(node_idx);
+    let edge_indices: Vec<(EdgeIndex, Direction)> = graph.get_edges_for_node(node_idx);
 
     DirectedConnections::new(
         edge_indices
             .iter()
             .map(|(edge_idx, direction)| {
-                let def: &ConnectionDefinition = graph
-                    .get_connection_for_edge(edge_idx.clone())
-                    .unwrap();
+                let def: &ConnectionDefinition =
+                    graph.get_connection_for_edge(edge_idx.clone()).unwrap();
 
                 let connection: Arc<Connection> = Arc::clone(
                     connections_lock
