@@ -2,7 +2,6 @@
 * Metrics on queues
 * Move to channels in async-rs
 * Enable multithreaded scheduling of individual components
-* Split into crates
 * Test framework utilising builder (ser + de component items? add a trait bound to component)
 * Decide on responsibilities between controller graph etc
 * Basic UI

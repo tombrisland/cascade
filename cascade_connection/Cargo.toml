@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = "1.32.0"
-tokio-stream = "0.1.14"
+async-channel = "1.9.0"
 
 serde = { version = "1.0.188", features = ["derive"] }
 

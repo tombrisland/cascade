@@ -4,13 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = "1.32.0"
-serde = { version = "1.0.188", features = ["derive"] }
-serde_json = "1.0.107"
-petgraph = "0.6.4"
 log = "0.4.20"
-cascade_component = { path = "../cascade_component" }
-cascade_connection = { path = "../cascade_connection" }
-cascade_payload = { path = "../cascade_payload" }
 async-trait = "0.1.73"
 
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = "1.0.107"
+
+cascade_component = { path = "../cascade_component" }
+cascade_payload = { path = "../cascade_payload" }

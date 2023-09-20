@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use petgraph::{Direction, Graph, Incoming, Outgoing};
 use petgraph::graph::{EdgeIndex, NodeIndex, NodeIndices};
 use petgraph::visit::EdgeRef;
@@ -33,19 +31,6 @@ impl CascadeGraph {
         self.graph_internal.edge_weight(edge_idx)
     }
 
-    pub fn get_directed_for_node(&self, node_idx: NodeIndex) -> HashMap<Direction, Vec<EdgeIndex>> {
-        let mut directed_connections: HashMap<Direction, Vec<EdgeIndex>> = Default::default();
-
-        for (direction, edge_idx) in self.get_edges_for_node(node_idx) {
-            // Build a map of Direction to Connections
-            directed_connections.entry(direction.clone())
-                .or_insert_with(Vec::new)
-                .push(edge_idx);
-        }
-
-        directed_connections
-    }
-
     pub fn get_edges_for_node(&self, node_idx: NodeIndex) -> Vec<(Direction, EdgeIndex)> {
         self.graph_internal
             .edges_directed(node_idx, Incoming)
@@ -59,7 +44,7 @@ impl CascadeGraph {
                     } else {
                         Incoming
                     },
-                    edge.id()
+                    edge.id(),
                 )
             })
             .collect()

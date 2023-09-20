@@ -8,9 +8,8 @@ nanoid = "0.4.0"
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = { version = "1.0.107" }
 async-trait = "0.1.73"
+
 cascade_payload = { path = "../cascade_payload" }
 cascade_connection = { path = "../cascade_connection" }
-futures = "0.3.28"
-petgraph = "0.6.4"
-tokio = "1.32.0"
-tokio-stream = "0.1.14"
+
+async-channel = "1.9.0"

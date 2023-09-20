@@ -1,86 +1,74 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use futures::future::join_all;
-use futures::stream::{select_all, SelectAll};
-use petgraph::{Direction, Incoming, Outgoing};
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio_stream::StreamExt;
-use tokio_stream::wrappers::ReceiverStream;
-use cascade_connection::Connection;
+use async_channel::{Receiver, Sender};
+
 use cascade_connection::definition::DEFAULT_CONNECTION;
 use cascade_payload::CascadeItem;
+
 use crate::component::ComponentMetadata;
 use crate::error::ComponentError;
-
-type IncomingStream = SelectAll<ReceiverStream<CascadeItem>>;
 
 pub struct ExecutionEnvironment {
     pub metadata: ComponentMetadata,
 
-    // Stream from all incoming connections
-    incoming_stream: Option<IncomingStream>,
-    // Keep track of the edge idx for each underlying stream
-    pub receiver_indexes: Vec<usize>,
+    // Connections which can be ignored if they don't exist
+    pub drop_connections: Vec<String>,
 
-    tx: HashMap<String, Arc<Sender<CascadeItem>>>,
+    rx: Vec<Arc<Receiver<CascadeItem>>>,
+    // Enable round robin of the input queues
+    rx_idx: AtomicUsize,
+
+    tx_named: HashMap<String, Arc<Sender<CascadeItem>>>,
 }
 
 impl ExecutionEnvironment {
     pub async fn new(
         metadata: ComponentMetadata,
-        directed_connections: HashMap<Direction, Vec<Arc<Connection>>>,
+        rx: Vec<Arc<Receiver<CascadeItem>>>,
+        tx_named: HashMap<String, Arc<Sender<CascadeItem>>>,
     ) -> ExecutionEnvironment {
-        let mut receiver_indexes: Vec<usize> = vec![];
-
-        let incoming_streams: Vec<ReceiverStream<CascadeItem>> = join_all(
-            directed_connections
-                .get(&Incoming)
-                .unwrap_or(&Vec::new())
-                .into_iter()
-                // Remember the order of these streams
-                .inspect(|conn| receiver_indexes.push(conn.idx))
-                .map(|conn| conn.get_receiver_stream()),
-        )
-            .await;
-
-        let incoming_stream: IncomingStream = select_all(incoming_streams);
-
-        let outgoing_connections: HashMap<String, Arc<Sender<CascadeItem>>> = directed_connections
-            .get(&Outgoing)
-            .unwrap_or(&Vec::new())
-            .iter()
-            .map(|conn| (conn.name.clone(), Arc::clone(&conn.tx)))
-            .collect();
-
+        // TODO could error here if rel not available
         ExecutionEnvironment {
             metadata,
-            incoming_stream: Some(incoming_stream),
-            receiver_indexes,
-            tx: outgoing_connections,
+            drop_connections: vec![DEFAULT_CONNECTION.to_string()],
+            rx,
+            rx_idx: Default::default(),
+            tx_named,
         }
     }
 
     // Get a single item from the session
-    pub async fn recv(&mut self) -> Result<CascadeItem, ComponentError> {
-        let stream: &mut IncomingStream = self
-            .incoming_stream
-            .as_mut()
-            .ok_or(ComponentError::MissingInputConnection)?;
+    pub async fn recv(&self) -> Result<CascadeItem, ComponentError> {
+        let rx_idx: usize = self.rx_idx.load(Ordering::Relaxed);
 
-        stream.next().await.ok_or(ComponentError::InputClosed)
+        self.rx_idx.store(
+            if rx_idx == self.rx.len() - 1 {
+                0
+            } else {
+                rx_idx + 1
+            },
+            Ordering::Relaxed,
+        );
+
+        self.rx
+            .get(rx_idx)
+            .unwrap()
+            .recv()
+            .await
+            .map_err(|_| ComponentError::InputClosed)
     }
 
     pub async fn send(&self, name: &str, item: CascadeItem) -> Result<(), ComponentError> {
-        match self.tx.get(name) {
+        match self.tx_named.get(name) {
             Some(connection) => connection
                 .send(item)
                 .await
                 .or(Err(ComponentError::OutputClosed)),
             None => {
-                // Don't try and send if there are no attached connections
-                // TODO decide on missing connection behaviour
-                if self.tx.is_empty() {
+                // Only error if there are connections that aren't configured to drop
+                if self.tx_named.is_empty() || self.drop_connections.contains(&name.to_string()) {
                     Ok(())
                 } else {
                     Err(ComponentError::MissingOutputConnection(name.to_string()))
@@ -92,14 +80,5 @@ impl ExecutionEnvironment {
     // Send to the default connection
     pub async fn send_default(&self, item: CascadeItem) -> Result<(), ComponentError> {
         self.send(DEFAULT_CONNECTION, item).await
-    }
-
-    pub fn take_receivers(&mut self) -> Option<Vec<Receiver<CascadeItem>>> {
-        self.incoming_stream.take().map(|stream| {
-            stream
-                .into_iter()
-                .map(|stream| stream.into_inner())
-                .collect()
-        })
     }
 }

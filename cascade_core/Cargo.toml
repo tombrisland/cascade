@@ -4,13 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.32.0", features = ["full"]}
-serde = { version = "1.0.188", features = ["derive"] }
-serde_json = "1.0.107"
 petgraph = "0.6.4"
 log = "0.4.20"
+
+tokio = { version = "1.32.0", features = ["time", "sync"]}
+async-channel = "1.9.0"
+
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = "1.0.107"
+
 cascade_payload = { path = "../cascade_payload" }
 cascade_component = { path = "../cascade_component" }
 cascade_connection = { path = "../cascade_connection" }
-futures = "0.3.28"
-tokio-stream = "0.1.14"

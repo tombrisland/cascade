@@ -1,27 +1,27 @@
 use std::collections::HashMap;
 use std::ops::DerefMut;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
+use async_channel::{Receiver, Sender};
 use log::{error, info};
-use petgraph::Direction;
 use petgraph::graph::{EdgeIndex, NodeIndex};
+use petgraph::Direction;
 use tokio::sync::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
-use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
-use tokio::time::{interval, Interval};
 use tokio::time::MissedTickBehavior::Delay;
+use tokio::time::{interval, Interval};
 
 use cascade_component::component::{Component, ComponentMetadata, Schedule};
 use cascade_component::definition::ComponentDefinition;
 use cascade_component::execution_env::ExecutionEnvironment;
-use cascade_connection::Connection;
 use cascade_connection::definition::ConnectionDefinition;
+use cascade_connection::Connection;
 use cascade_payload::CascadeItem;
 
-use crate::graph::CascadeGraph;
 use crate::graph::graph_controller_error::{StartComponentError, StopComponentError};
+use crate::graph::{CascadeGraph};
 use crate::registry::ComponentRegistry;
 
 type ConnectionsLock<'a> = RwLockWriteGuard<'a, HashMap<EdgeIndex, Arc<Connection>>>;
@@ -37,7 +37,7 @@ pub struct CascadeController {
 
     pub graph_definition: Arc<Mutex<CascadeGraph>>,
 
-    component_executions: HashMap<NodeIndex, ComponentExecution>,
+    active_executions: HashMap<NodeIndex, ComponentExecution>,
     connections: Arc<RwLock<HashMap<EdgeIndex, Arc<Connection>>>>,
 }
 
@@ -50,7 +50,7 @@ impl CascadeController {
             component_registry,
 
             connections: Default::default(),
-            component_executions: Default::default(),
+            active_executions: Default::default(),
         }
     }
 
@@ -62,8 +62,8 @@ impl CascadeController {
         let connections_lock: ConnectionsLock = self.connections.write().await;
 
         // Initialise any missing connections and return all relevant references
-        let directed_connections: HashMap<Direction, Vec<Arc<Connection>>> =
-            init_connections_for_node(&graph, connections_lock, node_idx);
+        let component_channels: ComponentChannels =
+            init_channels_for_node(&graph, connections_lock, node_idx);
 
         // Fail if the index isn't present in the graph
         let def: &ComponentDefinition = graph
@@ -81,7 +81,7 @@ impl CascadeController {
 
         // Execution env abstracts recv and sending of items
         let environment: Arc<Mutex<ExecutionEnvironment>> = Arc::new(Mutex::new(
-            ExecutionEnvironment::new(metadata.clone(), directed_connections).await,
+            ExecutionEnvironment::new(metadata.clone(), component_channels.rx, component_channels.tx_named).await,
         ));
 
         let shutdown: Arc<AtomicBool> = Arc::new(Default::default());
@@ -123,8 +123,7 @@ impl CascadeController {
             }),
         };
 
-        self.component_executions
-            .insert(node_idx, component_execution);
+        self.active_executions.insert(node_idx, component_execution);
 
         Ok(metadata)
     }
@@ -146,10 +145,13 @@ impl CascadeController {
         }
     }
 
-    pub async fn stop_component(&mut self, node_idx: NodeIndex) -> Result<ComponentMetadata, StopComponentError> {
+    pub async fn stop_component(
+        &mut self,
+        node_idx: NodeIndex,
+    ) -> Result<ComponentMetadata, StopComponentError> {
         // Try and find a relevant execution
         let execution: ComponentExecution = self
-            .component_executions
+            .active_executions
             .remove(&node_idx)
             // Error if we there is no execution started
             .ok_or(StopComponentError::ComponentNotStarted(node_idx.index()))?;
@@ -164,49 +166,45 @@ impl CascadeController {
 
         let environment: Arc<Mutex<ExecutionEnvironment>> = execution.environment.clone();
 
-        // Lock the execution environment now that the task is stopped
-        let connections_lock: ConnectionsLock = self.connections.write().await;
-        let mut environment_lock: MutexGuard<ExecutionEnvironment> = environment.lock().await;
-
-        // Take back ownership of the receivers and store in connections
-        let receivers: Vec<Receiver<CascadeItem>> = environment_lock.take_receivers().unwrap();
-
-        for (idx, receiver) in receivers.into_iter().enumerate() {
-            let edge_idx: EdgeIndex =
-                EdgeIndex::new(environment_lock.receiver_indexes.get(idx).unwrap().clone());
-
-            let mut connection_lock: RwLockWriteGuard<Option<Receiver<CascadeItem>>> =
-                connections_lock.get(&edge_idx).unwrap().rx.write().await;
-
-            // Store the receiver back in the original connection
-            connection_lock.replace(receiver);
-        }
+        // We can lock the execution environment now that the task is stopped
+        let environment_lock: MutexGuard<ExecutionEnvironment> = environment.lock().await;
 
         Ok(environment_lock.metadata.clone())
     }
 }
 
-fn init_connections_for_node(
+pub struct ComponentChannels {
+    rx: Vec<Arc<Receiver<CascadeItem>>>,
+    tx_named: HashMap<String, Arc<Sender<CascadeItem>>>,
+}
+
+fn init_channels_for_node(
     graph: &MutexGuard<CascadeGraph>,
     mut connections_lock: ConnectionsLock,
     node_idx: NodeIndex,
-) -> HashMap<Direction, Vec<Arc<Connection>>> {
-    let mut directed_connections: HashMap<Direction, Vec<EdgeIndex>> = graph.get_directed_for_node(node_idx);
+) -> ComponentChannels {
+    let mut rx: Vec<Arc<Receiver<CascadeItem>>> = vec![];
+    let mut tx_named: HashMap<String, Arc<Sender<CascadeItem>>> = Default::default();
 
-    // Create a new map with references to the connection structs
-    directed_connections.iter_mut().map(|(direction, edge_indices)| {
-        let x: Vec<Arc<Connection>> = edge_indices.into_iter().map(|edge_idx| {
-            let def: &ConnectionDefinition =
-                graph.get_connection_for_edge(edge_idx.clone()).unwrap();
+    for (direction, idx) in graph.get_edges_for_node(node_idx) {
+        let def: &ConnectionDefinition = graph.get_connection_for_edge(idx.clone()).unwrap();
 
-            // Build a map of Direction to Connections
-            Arc::clone(
-                connections_lock
-                    .entry(edge_idx.clone())
-                    .or_insert_with(|| Arc::new(Connection::new(edge_idx.index(), def))),
-            )
-        }).collect();
+        // Insert the new connection into the map for sharing across components
+        let connection: Arc<Connection> = Arc::clone(
+            connections_lock
+                .entry(idx.clone())
+                .or_insert_with(|| Arc::new(Connection::new(idx.index(), def))),
+        );
 
-        (direction.clone(), x)
-    }).collect()
+        match direction {
+            Direction::Outgoing => {
+                // Include entry in the map by name
+                tx_named.insert(connection.name.clone(), connection.tx.clone());
+            }
+            Direction::Incoming => rx.push(connection.rx.clone()),
+        };
+    }
+
+    // Return channels relevant to this node
+    ComponentChannels { rx, tx_named }
 }
