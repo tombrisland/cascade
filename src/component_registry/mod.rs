@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use log::info;
 
+use log::info;
 use serde_json::Value;
 
 use crate::component::component::{Component, ComponentMetadata};
-use crate::component::definition::{ComponentDefinition};
+use crate::component::definition::ComponentDefinition;
 use crate::component::Process;
 
 pub type ComponentMap = HashMap<&'static str, fn(Value) -> Arc<dyn Process>>;
@@ -24,6 +24,10 @@ impl ComponentRegistry {
         info!("Loaded {} component implementations into registry", components.len());
 
         ComponentRegistry { components }
+    }
+    
+    pub fn list_component_types(&self) -> Vec<&str> {
+        self.components.keys().cloned().collect()
     }
 
     pub fn get_component(&self, def: &ComponentDefinition) -> Option<Component> {

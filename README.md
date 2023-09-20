@@ -1,13 +1,17 @@
 # Soon
 * Metrics on queues
+* Move to channels in async-rs
+* Enable multithreaded scheduling of individual components
+* Split into crates
+* Test framework utilising builder (ser + de component items? add a trait bound to component)
+* Decide on responsibilities between controller graph etc
+* Basic UI
 
 ## Way out
 
-* Put in retry for processors
-* Parent id for flow items
-* Updating queue sizes on the fly
 * Multiple content references
-* Different content types
-* Detect cyclic graphs?
+* Different content types - InMemory, Disk, Http resource?
 * Metrics for each processor
-* Collapse graphs and enable parallel execution where nothing changed
+* Retry for processors
+* Atomic operation guarantee - safe writes + nothing lost during rollback
+* Transactions for each

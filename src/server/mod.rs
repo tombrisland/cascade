@@ -10,6 +10,7 @@ use crate::graph::controller::CascadeController;
 use crate::server::endpoint::{EndpointError, EndpointResult};
 use crate::server::endpoint::control::{start_component, stop_component};
 use crate::server::endpoint::create::{create_component, create_connection};
+use crate::server::endpoint::list::{list_available_components, list_graph_connections, list_graph_nodes};
 
 mod endpoint;
 
@@ -30,10 +31,20 @@ async fn router(
     info!("Received request for {}", req.uri());
 
     let result: EndpointResult = match (req.method(), req.uri().path()) {
+        // Retrieve information from the component registry
+        (&Method::GET, "/list_available_components") => list_available_components(controller, req).await,
+
+        // Create items in the graph
         (&Method::PUT, "/create_component") => create_component(controller, req).await,
         (&Method::PUT, "/create_connection") => create_connection(controller, req).await,
+
+        // Control of individual components
         (&Method::GET, "/start_component") => start_component(controller, req).await,
         (&Method::GET, "/stop_component") => stop_component(controller, req).await,
+
+        // List the current graph state
+        (&Method::GET, "/list_nodes") => list_graph_nodes(controller, req).await,
+        (&Method::GET, "/list_connections") => list_graph_connections(controller, req).await,
         // Return 404 not found response.
         _ => Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)
@@ -45,11 +56,15 @@ async fn router(
     match result {
         Ok(response) => Ok(response),
         Err(err) => match err {
-            EndpointError::ServerError(err) => Err(err),
+            EndpointError::HyperError(err) => Err(err),
             EndpointError::BadRequest(err) => Ok(Response::builder()
                 .status(StatusCode::BAD_REQUEST)
                 .body(Body::from(err.to_string()))
-                .unwrap())
+                .unwrap()),
+            EndpointError::InternalServerError(err) => Ok(Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(err.to_string()))
+                .unwrap()),
         },
     }
 }

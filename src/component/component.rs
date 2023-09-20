@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
 use nanoid::nanoid;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::component::{NamedComponent, Process};
 use crate::component::definition::{ComponentDefinition, ComponentType};
@@ -15,7 +15,7 @@ pub struct Component {
     pub implementation: Arc<dyn Process>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Schedule {
     Unbounded,

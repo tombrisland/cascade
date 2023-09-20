@@ -1,16 +1,16 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::component::component::Schedule;
 use crate::connection::definition::ConnectionDefinition;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ComponentType {
     Producer,
     Processor,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ComponentDefinition {
     pub display_name: String,
 
