@@ -1,0 +1,12 @@
+[package]
+name = "cascade_connection"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = "1.32.0"
+tokio-stream = "0.1.14"
+
+serde = { version = "1.0.188", features = ["derive"] }
+
+cascade_payload = { path = "../cascade_payload" }

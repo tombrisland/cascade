@@ -1,26 +1,11 @@
-[package]
-name = "cascade"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+resolver = "2"
 
-[dependencies]
-log = "0.4.16"
-petgraph = "0.6.0"
-
-nanoid = "0.4.0"
-
-tokio = { version = "^1.32.0", features = ["full"] }
-tokio-stream = {version = "0.1.14", features = ["full"]}
-futures = "0.3.28"
-
-hyper = { version = "0.14.18", features = [
-    "http1",
-    "server",
-    "stream",
-    "runtime",
-] }
-serde = { version = "1.0", features = ["derive", "rc"] }
-serde_json = "1.0"
-
-async-trait = "0.1.53"
-url = { version = "2.4.1", features = [] }
+members = [
+    "cascade_core",
+    "cascade_component",
+    "cascade_connection",
+    "cascade_payload",
+    "cascade_component_std",
+    "cascade_http_server"
+]
