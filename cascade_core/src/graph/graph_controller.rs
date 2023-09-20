@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ops::DerefMut;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -21,15 +20,17 @@ use cascade_connection::Connection;
 use cascade_payload::CascadeItem;
 
 use crate::graph::graph_controller_error::{StartComponentError, StopComponentError};
-use crate::graph::{CascadeGraph};
+use crate::graph::CascadeGraph;
 use crate::registry::ComponentRegistry;
 
 type ConnectionsLock<'a> = RwLockWriteGuard<'a, HashMap<EdgeIndex, Arc<Connection>>>;
 
 struct ComponentExecution {
-    handle: JoinHandle<()>,
+    // Set to request shutdown
     shutdown: Arc<AtomicBool>,
-    environment: Arc<Mutex<ExecutionEnvironment>>,
+    environment: Arc<ExecutionEnvironment>,
+    // Active tasks for this execution
+    handles: Vec<JoinHandle<()>>,
 }
 
 pub struct CascadeController {
@@ -79,31 +80,44 @@ impl CascadeController {
 
         info!("{} is starting", metadata);
 
+        let component: Arc<Component> = Arc::new(component);
+        // Flag to indicate shutdown is requested
+        let shutdown: Arc<AtomicBool> = Arc::new(Default::default());
         // Execution env abstracts recv and sending of items
-        let environment: Arc<Mutex<ExecutionEnvironment>> = Arc::new(Mutex::new(
-            ExecutionEnvironment::new(metadata.clone(), component_channels.rx, component_channels.tx_named).await,
+        let environment: Arc<ExecutionEnvironment> = Arc::new(ExecutionEnvironment::new(
+            metadata.clone(),
+            component_channels.rx,
+            component_channels.tx_named,
         ));
 
-        let shutdown: Arc<AtomicBool> = Arc::new(Default::default());
-
+        // Create a new execution for this component
         let component_execution: ComponentExecution = ComponentExecution {
             environment: environment.clone(),
             shutdown: shutdown.clone(),
-            // Create a new task to run the execution within
-            handle: tokio::spawn(async move {
-                let execution: Arc<Mutex<ExecutionEnvironment>> = Arc::clone(&environment);
 
-                match component.schedule {
-                    // Allow the component to manage it's own scheduling
-                    Schedule::Unbounded => loop {
-                        if shutdown.load(Ordering::Relaxed) {
-                            break;
-                        }
+            handles: match component.schedule {
+                // Allow the component to manage it's own scheduling
+                Schedule::Unbounded { concurrency } => (0..concurrency)
+                    .into_iter()
+                    .map(|_| {
+                        let component: Arc<Component> = Arc::clone(&component);
+                        let environment: Arc<ExecutionEnvironment> = Arc::clone(&environment);
+                        let shutdown: Arc<AtomicBool> = Arc::clone(&shutdown);
 
-                        Self::run_component(&component, execution.clone()).await;
-                    },
-                    // Schedule the component at set intervals
-                    Schedule::Interval { period_millis } => {
+                        tokio::spawn(async move {
+                            loop {
+                                if shutdown.load(Ordering::Relaxed) {
+                                    break;
+                                }
+
+                                Self::run_component(component.clone(), environment.clone()).await;
+                            }
+                        })
+                    })
+                    .collect(),
+                // Schedule the component at set intervals
+                Schedule::Interval { period_millis } => {
+                    vec![tokio::spawn(async move {
                         let mut interval: Interval = interval(Duration::from_millis(period_millis));
                         // Don't try and catch up with missed ticks
                         interval.set_missed_tick_behavior(Delay);
@@ -116,11 +130,11 @@ impl CascadeController {
 
                             interval.tick().await;
 
-                            Self::run_component(&component, execution.clone()).await;
+                            Self::run_component(component.clone(), environment.clone()).await;
                         }
-                    }
-                };
-            }),
+                    })]
+                }
+            },
         };
 
         self.active_executions.insert(node_idx, component_execution);
@@ -128,16 +142,10 @@ impl CascadeController {
         Ok(metadata)
     }
 
-    async fn run_component<'a>(component: &Component, execution: Arc<Mutex<ExecutionEnvironment>>) {
+    async fn run_component(component: Arc<Component>, execution: Arc<ExecutionEnvironment>) {
         let metadata: &ComponentMetadata = &component.metadata;
-        // Lock the execution environment for the duration of processing
-        let mut execution_lock: MutexGuard<ExecutionEnvironment> = execution.lock().await;
 
-        match component
-            .implementation
-            .process(execution_lock.deref_mut())
-            .await
-        {
+        match component.implementation.process(execution).await {
             Ok(_) => {}
             Err(err) => {
                 error!("{} failed with {:?}", metadata, err)
@@ -156,20 +164,16 @@ impl CascadeController {
             // Error if we there is no execution started
             .ok_or(StopComponentError::ComponentNotStarted(node_idx.index()))?;
 
-        // Indicate that the execution should stop
+        // Indicate that the executions should stop
         execution.shutdown.store(true, Ordering::Relaxed);
         // Wait for it to stop
-        let _ = &execution
-            .handle
-            .await
-            .map_err(|_| StopComponentError::FailedToStop)?;
 
-        let environment: Arc<Mutex<ExecutionEnvironment>> = execution.environment.clone();
+        // join!(&execution.handles).await;
+        // .map_err(|_| StopComponentError::FailedToStop)?;
 
-        // We can lock the execution environment now that the task is stopped
-        let environment_lock: MutexGuard<ExecutionEnvironment> = environment.lock().await;
+        let environment: Arc<ExecutionEnvironment> = execution.environment;
 
-        Ok(environment_lock.metadata.clone())
+        Ok(environment.metadata.clone())
     }
 }
 

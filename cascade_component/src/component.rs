@@ -1,11 +1,10 @@
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
-use nanoid::nanoid;
-use serde::{Deserialize, Serialize};
 use crate::definition::{ComponentDefinition, ComponentType};
 use crate::{NamedComponent, Process};
-
+use nanoid::nanoid;
+use serde::{Deserialize, Serialize};
 
 pub struct Component {
     pub metadata: ComponentMetadata,
@@ -18,8 +17,23 @@ pub struct Component {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Schedule {
-    Unbounded,
-    Interval { period_millis: u64 },
+    Unbounded {
+        #[serde(default = "concurrency_default")]
+        concurrency: u8,
+    },
+    // Interval {
+    //     period_millis: u64,
+    //     // Max amount of tasks which can be started to maintain the period
+    //     #[serde(default = "concurrency_default")]
+    //     max_concurrency: u8,
+    // },
+    Interval {
+        period_millis: u64,
+    },
+}
+
+fn concurrency_default() -> u8 {
+    1
 }
 
 #[derive(Clone)]

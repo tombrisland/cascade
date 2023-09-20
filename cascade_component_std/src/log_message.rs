@@ -44,7 +44,7 @@ impl Process for LogMessage {
         })
     }
 
-    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
+    async fn process(&self, execution: Arc<ExecutionEnvironment>) -> Result<(), ComponentError> {
         let item: CascadeItem = execution.recv().await?;
 
         // Increment item count and fetch the value

@@ -24,7 +24,7 @@ pub struct ExecutionEnvironment {
 }
 
 impl ExecutionEnvironment {
-    pub async fn new(
+    pub fn new(
         metadata: ComponentMetadata,
         rx: Vec<Arc<Receiver<CascadeItem>>>,
         tx_named: HashMap<String, Arc<Sender<CascadeItem>>>,

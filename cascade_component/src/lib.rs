@@ -25,5 +25,5 @@ pub trait Process: NamedComponent + Send + Sync {
         where
             Self: Sized;
 
-    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError>;
+    async fn process(&self, execution: Arc<ExecutionEnvironment>) -> Result<(), ComponentError>;
 }

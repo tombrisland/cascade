@@ -34,7 +34,7 @@ impl Process for GenerateItem {
         Arc::new(generate_item)
     }
 
-    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
+    async fn process(&self, execution: Arc<ExecutionEnvironment>) -> Result<(), ComponentError> {
         // Send as many as permitted by batch_size
         for _ in 0..self.batch_size {
             execution.send_default(CascadeItem::new(HashMap::new())).await.unwrap();

@@ -24,6 +24,6 @@ pub struct ComponentDefinition {
 fn schedule_default() -> Schedule {
     Schedule::Interval{
         // Default to once every half second
-        period_millis: 500
+        period_millis: 500,
     }
 }
