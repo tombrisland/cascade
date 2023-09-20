@@ -1,5 +1,6 @@
 // Required to call trait fns dynamically
 #![feature(fn_traits)]
+#![feature(async_fn_in_trait)]
 extern crate core;
 
 use std::sync::Arc;
@@ -14,15 +15,15 @@ use crate::component_std::log_message::LogMessage;
 use crate::component_std::update_properties::UpdateProperties;
 use crate::graph::controller::CascadeController;
 use crate::logger::SimpleLogger;
-use crate::server::{CascadeService, ServerState};
+use crate::server::CascadeServer;
 
 mod component;
+mod component_registry;
+mod component_std;
 mod connection;
 mod graph;
 mod logger;
 mod server;
-mod component_registry;
-mod component_std;
 
 static LOGGER: SimpleLogger = SimpleLogger;
 
@@ -41,15 +42,13 @@ async fn main() -> Result<(), hyper::Error> {
         UpdateProperties::create_from_json,
     );
 
-    let state = ServerState {
-        controller: Arc::new(Mutex::new(CascadeController::new(ComponentRegistry::new(
-            components,
-        )))),
-    };
+    let controller: Arc<Mutex<CascadeController>> = Arc::new(Mutex::new(CascadeController::new(
+        ComponentRegistry::new(components),
+    )));
 
-    let service = CascadeService {
+    let service = CascadeServer {
         addr: "127.0.0.1:3000".parse().unwrap(),
-        state: Arc::new(state),
+        controller,
     };
 
     service.start().await

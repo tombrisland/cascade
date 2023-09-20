@@ -5,10 +5,11 @@ use futures::future::join_all;
 use futures::stream::{select_all, SelectAll};
 use petgraph::{Incoming, Outgoing};
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
+use tokio_stream::wrappers::ReceiverStream;
 
 use crate::component::component::ComponentMetadata;
+use crate::component::definition::DEFAULT_CONNECTION;
 use crate::component::error::ComponentError;
 use crate::connection::DirectedConnections;
 use crate::graph::item::CascadeItem;
@@ -25,8 +26,6 @@ pub struct ExecutionEnvironment {
 
     tx: HashMap<String, Arc<Sender<CascadeItem>>>,
 }
-
-pub const DEFAULT_CONNECTION: &str = "default";
 
 impl ExecutionEnvironment {
     pub async fn new(

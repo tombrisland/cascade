@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use log::info;
 
 use serde_json::Value;
 
@@ -16,6 +17,12 @@ pub struct ComponentRegistry {
 
 impl ComponentRegistry {
     pub fn new(components: ComponentMap) -> ComponentRegistry {
+        components.iter().for_each(|(name, _)| {
+            info!("Loaded component {}", name)
+        });
+
+        info!("Loaded {} component implementations into registry", components.len());
+
         ComponentRegistry { components }
     }
 

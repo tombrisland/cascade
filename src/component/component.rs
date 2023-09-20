@@ -4,8 +4,8 @@ use std::sync::Arc;
 use nanoid::nanoid;
 use serde::Deserialize;
 
+use crate::component::{NamedComponent, Process};
 use crate::component::definition::{ComponentDefinition, ComponentType};
-use crate::component::Process;
 
 pub struct Component {
     pub metadata: ComponentMetadata,
@@ -35,7 +35,10 @@ pub struct ComponentMetadata {
 // Used as a prefix in other logs for traceability
 impl Display for ComponentMetadata {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("[{:?}:{}:{}]", self.component_type, self.type_name, self.id))
+        f.write_fmt(format_args!(
+            "[{:?}:{}:{}]",
+            self.component_type, self.type_name, self.id
+        ))
     }
 }
 
@@ -51,13 +54,18 @@ impl ComponentMetadata {
         }
     }
 
-    // pub fn from_named<T: NamedComponent>(display_name: String) -> ComponentMetadata {
-    //     let type_name: String = T::type_name().to_string();
-    //
-    //     ComponentMetadata {
-    //         id: format!("{}-{}", type_name, nanoid!()),
-    //         type_name,
-    //         display_name,
-    //     }
-    // }
+    // Derive metadata from an implementation
+    pub fn _from_named<T: NamedComponent>(
+        component_type: ComponentType,
+        display_name: String,
+    ) -> ComponentMetadata {
+        let type_name: String = T::type_name().to_string();
+
+        ComponentMetadata {
+            id: format!("{}-{}", type_name, nanoid!()),
+            type_name,
+            display_name,
+            component_type,
+        }
+    }
 }

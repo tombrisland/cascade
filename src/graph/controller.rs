@@ -56,7 +56,7 @@ impl CascadeController {
     pub async fn start_component(
         &mut self,
         node_idx: NodeIndex,
-    ) -> Result<(), StartComponentError> {
+    ) -> Result<ComponentMetadata, StartComponentError> {
         let graph: MutexGuard<CascadeGraph> = self.graph_definition.lock().await;
         let connections_lock: ConnectionsLock = self.connections.write().await;
 
@@ -74,12 +74,13 @@ impl CascadeController {
             .component_registry
             .get_component(def)
             .ok_or(StartComponentError::MissingComponent(def.type_name.clone()))?;
+        let metadata: ComponentMetadata = component.metadata.clone();
 
-        info!("{} is starting", component.metadata);
+        info!("{} is starting", metadata);
 
         // Execution env abstracts recv and sending of items
         let environment: Arc<Mutex<ExecutionEnvironment>> = Arc::new(Mutex::new(
-            ExecutionEnvironment::new(component.metadata.clone(), directed_connections).await,
+            ExecutionEnvironment::new(metadata.clone(), directed_connections).await,
         ));
 
         let shutdown: Arc<AtomicBool> = Arc::new(Default::default());
@@ -124,7 +125,7 @@ impl CascadeController {
         self.component_executions
             .insert(node_idx, component_execution);
 
-        Ok(())
+        Ok(metadata)
     }
 
     async fn run_component<'a>(component: &Component, execution: Arc<Mutex<ExecutionEnvironment>>) {
@@ -144,7 +145,7 @@ impl CascadeController {
         }
     }
 
-    pub async fn stop_component(&mut self, node_idx: NodeIndex) -> Result<(), StopComponentError> {
+    pub async fn stop_component(&mut self, node_idx: NodeIndex) -> Result<ComponentMetadata, StopComponentError> {
         // Try and find a relevant execution
         let execution: ComponentExecution = self
             .component_executions
@@ -180,7 +181,7 @@ impl CascadeController {
             connection_lock.replace(receiver);
         }
 
-        Ok(())
+        Ok(environment_lock.metadata.clone())
     }
 }
 
