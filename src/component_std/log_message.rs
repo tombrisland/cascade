@@ -60,8 +60,8 @@ impl Process for LogMessage {
             let elapsed_millis: f64 = (now - item.created_nanos) as f64 / 1_000_000.0;
 
             info!(
-                "{}, Item number {} took {:.2}ms, contents {:?}",
-                execution.metadata, count, elapsed_millis, item
+                "Item number {} took {:.2}ms, contents {:?}",
+                count, elapsed_millis, item
             );
         }
 

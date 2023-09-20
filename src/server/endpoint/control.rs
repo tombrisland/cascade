@@ -1,18 +1,14 @@
-use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use hyper::{Body, Request, Response, StatusCode};
 use log::info;
 use petgraph::graph::NodeIndex;
 use tokio::sync::{Mutex, MutexGuard};
-use crate::component::component::ComponentMetadata;
 
+use crate::component::component::ComponentMetadata;
 use crate::graph::controller::CascadeController;
 use crate::graph::error::{StartComponentError, StopComponentError};
-use crate::server::endpoint::{parse_query_params, EndpointError, EndpointResult};
-
-const INDEX_PARAM: &str = "idx";
+use crate::server::endpoint::{EndpointError, EndpointResult, get_idx_query_parameter};
 
 /// Start a component in the graph from an index query parameter
 /// This will fail if either:
@@ -24,7 +20,7 @@ pub async fn start_component(
     controller: Arc<Mutex<CascadeController>>,
     request: Request<Body>,
 ) -> EndpointResult {
-    let node_idx: NodeIndex = get_node_idx_parameter(request)?;
+    let node_idx: NodeIndex = NodeIndex::new(get_idx_query_parameter(request)?);
 
     let mut controller_lock: MutexGuard<CascadeController> = controller.lock().await;
 
@@ -42,7 +38,7 @@ pub async fn start_component(
             info!("{}", message);
 
             Ok(Response::builder()
-                .status(StatusCode::CREATED)
+                .status(StatusCode::ACCEPTED)
                 .body(Body::from(message))?)
         }
         Err(err) => Err(EndpointError::BadRequest(format!(
@@ -62,7 +58,7 @@ pub async fn stop_component(
     controller: Arc<Mutex<CascadeController>>,
     request: Request<Body>,
 ) -> EndpointResult {
-    let node_idx: NodeIndex = get_node_idx_parameter(request)?;
+    let node_idx: NodeIndex = NodeIndex::new(get_idx_query_parameter(request)?);
 
     let mut controller_lock: MutexGuard<CascadeController> = controller.lock().await;
 
@@ -81,7 +77,7 @@ pub async fn stop_component(
             info!("{}", message);
 
             Ok(Response::builder()
-                .status(StatusCode::CREATED)
+                .status(StatusCode::ACCEPTED)
                 .body(Body::from(message))?)
         }
         Err(err) => Err(EndpointError::BadRequest(format!(
@@ -90,21 +86,4 @@ pub async fn stop_component(
             node_idx.index()
         ))),
     }
-}
-
-fn get_node_idx_parameter(request: Request<Body>) -> Result<NodeIndex, EndpointError> {
-    let params: HashMap<String, String> = parse_query_params(request);
-
-    // Error if the param is missing or not an integer
-    let idx_str: &String = params
-        .get(INDEX_PARAM)
-        .ok_or(EndpointError::BadRequest(format!(
-            "Query parameter {} was missing",
-            INDEX_PARAM
-        )))?;
-    let node_idx: usize = usize::from_str(idx_str).map_err(|_| {
-        EndpointError::BadRequest(format!("Query parameter {} was not a number", INDEX_PARAM))
-    })?;
-
-    Ok(NodeIndex::new(node_idx))
 }

@@ -1,16 +1,19 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use log::info;
 use tokio::sync::Mutex;
 
 use crate::graph::controller::CascadeController;
-use crate::server::endpoint::{EndpointError, EndpointResult};
 use crate::server::endpoint::control::{start_component, stop_component};
-use crate::server::endpoint::create::{create_component, create_connection};
-use crate::server::endpoint::list::{list_available_components, list_graph_connections, list_graph_nodes};
+use crate::server::endpoint::graph::{
+    create_component, create_connection, list_graph_connections, list_graph_nodes,
+    remove_component, remove_connection,
+};
+use crate::server::endpoint::registry::list_available_components;
+use crate::server::endpoint::{EndpointError, EndpointResult};
 
 mod endpoint;
 
@@ -28,15 +31,17 @@ async fn router(
 ) -> Result<Response<Body>, hyper::Error> {
     let controller: Arc<Mutex<CascadeController>> = Arc::clone(&controller);
 
-    info!("Received request for {}", req.uri());
-
     let result: EndpointResult = match (req.method(), req.uri().path()) {
         // Retrieve information from the component registry
-        (&Method::GET, "/list_available_components") => list_available_components(controller, req).await,
+        (&Method::GET, "/list_available_components") => {
+            list_available_components(controller, req).await
+        }
 
-        // Create items in the graph
+        // Modify items in the graph
         (&Method::PUT, "/create_component") => create_component(controller, req).await,
         (&Method::PUT, "/create_connection") => create_connection(controller, req).await,
+        (&Method::DELETE, "/remove_component") => remove_component(controller, req).await,
+        (&Method::DELETE, "/remove_connection") => remove_connection(controller, req).await,
 
         // Control of individual components
         (&Method::GET, "/start_component") => start_component(controller, req).await,

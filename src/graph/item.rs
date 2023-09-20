@@ -13,8 +13,6 @@ pub struct CascadeItem {
     pub content: HashMap<String, Vec<u8>>,
 }
 
-impl Unpin for CascadeItem {}
-
 impl CascadeItem {
     pub fn new(properties: HashMap<String, String>) -> CascadeItem {
         CascadeItem {

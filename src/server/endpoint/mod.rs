@@ -1,13 +1,15 @@
 use std::collections::HashMap;
+use std::str::FromStr;
+
 use hyper::{Body, header, http, Request, Response, StatusCode};
 use hyper::body::{Buf, Bytes};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Error;
 
-pub(crate) mod create;
 pub(crate) mod control;
-pub(crate) mod list;
+pub(crate) mod graph;
+pub(crate) mod registry;
 
 pub enum EndpointError {
     HyperError(hyper::Error),
@@ -47,7 +49,7 @@ pub async fn deserialise_body<T: DeserializeOwned>(
 const APPLICATION_JSON: &str = "application/json";
 
 // Serialise a value and return it in a JSON response body
-fn create_json_body<T : Serialize>(to_serialise: &T) -> Result<Response<Body>, EndpointError> {
+fn create_json_body<T: Serialize>(to_serialise: &T) -> Result<Response<Body>, EndpointError> {
     match serde_json::to_string_pretty(to_serialise) {
         Ok(serialised) => {
             // Return serialised response in JSON body
@@ -56,11 +58,11 @@ fn create_json_body<T : Serialize>(to_serialise: &T) -> Result<Response<Body>, E
                 .header(header::CONTENT_TYPE, APPLICATION_JSON)
                 .body(Body::from(serialised))?)
         }
-        Err(err) => Err(EndpointError::InternalServerError(err.to_string()))
+        Err(err) => Err(EndpointError::InternalServerError(err.to_string())),
     }
 }
 
-pub fn parse_query_params(request: Request<Body>) -> HashMap<String, String> {
+fn parse_query_params(request: Request<Body>) -> HashMap<String, String> {
     request
         .uri()
         .query()
@@ -72,4 +74,23 @@ pub fn parse_query_params(request: Request<Body>) -> HashMap<String, String> {
         })
         // Default to empty map instead of failure
         .unwrap_or_else(HashMap::new)
+}
+
+pub(crate) const INDEX_PARAM: &str = "idx";
+
+fn get_idx_query_parameter(request: Request<Body>) -> Result<usize, EndpointError> {
+    let params: HashMap<String, String> = parse_query_params(request);
+
+    // Error if the param is missing or not an integer
+    let idx_str: &String = params
+        .get(INDEX_PARAM)
+        .ok_or(EndpointError::BadRequest(format!(
+            "Query parameter {} was missing",
+            INDEX_PARAM
+        )))?;
+    let idx: usize = usize::from_str(idx_str).map_err(|_| {
+        EndpointError::BadRequest(format!("Query parameter {} was not a number", INDEX_PARAM))
+    })?;
+
+    Ok(idx)
 }
