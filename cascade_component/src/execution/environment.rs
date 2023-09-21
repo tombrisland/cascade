@@ -1,33 +1,15 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use async_channel::{Receiver, Sender};
-use futures::stream::{select_all, SelectAll};
-use futures::StreamExt;
+use async_channel::Sender;
 
-use cascade_connection::definition::DEFAULT_CONNECTION;
 use cascade_connection::{ComponentChannels, Message};
+use cascade_connection::definition::DEFAULT_CONNECTION;
 use cascade_payload::CascadeItem;
 
 use crate::component::ComponentMetadata;
 use crate::error::ComponentError;
-
-type FusedStream<T> = SelectAll<Receiver<T>>;
-pub struct ReceiverStream<Message> {
-    select_all: FusedStream<Message>,
-}
-
-impl<Message> ReceiverStream<Message> {
-    fn new(receivers: Vec<Receiver<Message>>) -> ReceiverStream<Message> {
-        ReceiverStream {
-            select_all: select_all(receivers),
-        }
-    }
-
-    async fn recv(&mut self) -> Option<Message> {
-        self.select_all.next().await
-    }
-}
+use crate::execution::stream::ReceiverStream;
 
 pub struct ExecutionEnvironment {
     pub metadata: ComponentMetadata,

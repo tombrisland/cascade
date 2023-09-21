@@ -41,14 +41,14 @@ impl Display for StopComponentError {
 
 #[derive(Debug)]
 pub enum RemoveConnectionError {
-    ConnectionStillActive(Vec<usize>),
+    ConnectionRunning(Vec<usize>),
 }
 
 impl Display for RemoveConnectionError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            RemoveConnectionError::ConnectionStillActive(indices) => {
-                f.write_fmt(format_args!("Connection is still in use by components {:?}", indices))
+            RemoveConnectionError::ConnectionRunning(indices) => {
+                f.write_fmt(format_args!("Connection is still in use {:?}", indices))
             }
         }
     }

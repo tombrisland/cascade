@@ -5,9 +5,9 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use cascade_component::error::ComponentError;
-use cascade_component::execution_env::ExecutionEnvironment;
 use cascade_component::{NamedComponent, Process};
+use cascade_component::error::ComponentError;
+use cascade_component::execution::environment::ExecutionEnvironment;
 use cascade_payload::CascadeItem;
 
 #[derive(Serialize, Deserialize)]

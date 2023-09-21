@@ -6,15 +6,10 @@ use cascade_component::definition::ComponentDefinition;
 use cascade_connection::definition::ConnectionDefinition;
 
 pub mod graph_builder;
-pub mod graph_controller;
-pub mod graph_controller_error;
-mod component_execution;
 
 pub type GraphInternal = Graph<ComponentDefinition, ConnectionDefinition>;
 
 // Represents a graph of the entire graph
-// TODO remove this clone
-#[derive(Clone)]
 pub struct CascadeGraph {
     pub graph_internal: GraphInternal,
 }

@@ -12,7 +12,7 @@ use cascade_component::{NamedComponent, Process};
 use cascade_component_std::generate_item::GenerateItem;
 use cascade_component_std::log_message::LogMessage;
 use cascade_component_std::update_properties::UpdateProperties;
-use cascade_core::graph::graph_controller::CascadeController;
+use cascade_core::controller::CascadeController;
 use cascade_core::registry::{ComponentMap, ComponentRegistry};
 use cascade_http_server::CascadeServer;
 

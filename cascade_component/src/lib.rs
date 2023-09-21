@@ -4,12 +4,12 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::error::ComponentError;
-use crate::execution_env::ExecutionEnvironment;
+use crate::execution::environment::ExecutionEnvironment;
 
 pub mod component;
 pub mod definition;
 pub mod error;
-pub mod execution_env;
+pub mod execution;
 
 /// Implemented by all components to statically defined type name
 pub trait NamedComponent {

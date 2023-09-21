@@ -1,3 +1,6 @@
+pub mod environment;
+mod stream;
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -7,11 +10,11 @@ use tokio::task::{JoinError, JoinSet};
 use tokio::time::{interval, Interval};
 use tokio::time::MissedTickBehavior::Delay;
 
-use cascade_component::component::{Component, ComponentMetadata, Schedule};
-use cascade_component::error::ComponentError;
-use cascade_component::execution_env::ExecutionEnvironment;
-use cascade_component::Process;
 use cascade_connection::{ComponentChannels, Message};
+use crate::component::{Component, ComponentMetadata, Schedule};
+use crate::error::ComponentError;
+use crate::execution::environment::ExecutionEnvironment;
+use crate::Process;
 
 pub struct ComponentExecution {
     // Active task for this execution

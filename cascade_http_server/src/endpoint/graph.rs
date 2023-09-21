@@ -4,12 +4,15 @@ use hyper::{Body, Request, Response, StatusCode};
 use log::info;
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use tokio::sync::{Mutex, MutexGuard};
+
 use cascade_component::definition::ComponentDefinition;
 use cascade_connection::definition::ConnectionDefinition;
+use cascade_core::controller::CascadeController;
 use cascade_core::graph::{CascadeGraph, GraphInternal};
-use cascade_core::graph::graph_controller::CascadeController;
-use crate::endpoint::{create_json_body, deserialise_body, EndpointError, EndpointResult, get_idx_query_parameter};
 
+use crate::endpoint::{
+    create_json_body, deserialise_body, get_idx_query_parameter, EndpointError, EndpointResult,
+};
 
 /// List the component definitions in the graph
 pub async fn list_graph_nodes(
@@ -144,8 +147,13 @@ pub async fn remove_component(
     let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
     let mut graph_lock: MutexGuard<CascadeGraph> = controller_lock.graph_definition.lock().await;
 
-    // todo components must be stopped before removal
-
+    // Error if component is still running
+    if controller_lock.active_executions.contains_key(&node_idx) {
+        return Err(EndpointError::BadRequest(format!(
+            "Component at idx {} is still running",
+            node_idx.index()
+        )));
+    }
 
     match graph_lock.graph_internal.remove_node(node_idx) {
         None => Err(EndpointError::BadRequest(format!(
@@ -165,7 +173,9 @@ pub async fn remove_component(
 }
 
 /// Remove a connection in the graph from a JSON request
-/// This will only fail if the connection doesn't exist
+/// This will fail if either:
+///     The connection does not exist
+///     There are components attached to it still running
 pub async fn remove_connection(
     controller: Arc<Mutex<CascadeController>>,
     request: Request<Body>,
@@ -175,19 +185,30 @@ pub async fn remove_connection(
     let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
     let mut graph_lock: MutexGuard<CascadeGraph> = controller_lock.graph_definition.lock().await;
 
-    match graph_lock.graph_internal.remove_edge(edge_idx) {
-        None => Err(EndpointError::BadRequest(format!(
+    let (node_source, node_dest): (NodeIndex, NodeIndex) = graph_lock
+        .graph_internal
+        .edge_endpoints(edge_idx)
+        .ok_or(EndpointError::BadRequest(format!(
             "No connection at idx {}",
             edge_idx.index()
-        ))),
-        Some(_) => {
-            let message: String = format!("Removed connection at idx {}", edge_idx.index());
+        )))?;
 
-            info!("{}", message);
-
-            Ok(Response::builder()
-                .status(StatusCode::ACCEPTED)
-                .body(Body::from(message))?)
-        }
+    if controller_lock.active_executions.contains_key(&node_source)
+        || controller_lock.active_executions.contains_key(&node_dest)
+    {
+        return Err(EndpointError::BadRequest(
+            "Connected node is still running".to_string(),
+        ));
     }
+
+    // We just asserted that the edge exists
+    graph_lock.graph_internal.remove_edge(edge_idx).unwrap();
+
+    let message: String = format!("Removed connection at idx {}", edge_idx.index());
+
+    info!("{}", message);
+
+    Ok(Response::builder()
+        .status(StatusCode::ACCEPTED)
+        .body(Body::from(message))?)
 }

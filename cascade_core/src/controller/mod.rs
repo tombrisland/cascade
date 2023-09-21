@@ -9,15 +9,15 @@ use tokio::sync::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 
 use cascade_component::component::{Component, ComponentMetadata, Schedule};
 use cascade_component::definition::ComponentDefinition;
+use cascade_component::execution::ComponentExecution;
 use cascade_connection::{ComponentChannels, Connection, Message};
 use cascade_connection::definition::ConnectionDefinition;
 
+use crate::controller::error::{RemoveConnectionError, StartComponentError, StopComponentError};
 use crate::graph::CascadeGraph;
-use crate::graph::component_execution::ComponentExecution;
-use crate::graph::graph_controller_error::{
-    RemoveConnectionError, StartComponentError, StopComponentError,
-};
 use crate::registry::ComponentRegistry;
+
+pub mod error;
 
 type ConnectionsLock<'a> = RwLockWriteGuard<'a, HashMap<EdgeIndex, Arc<Connection>>>;
 
@@ -26,7 +26,7 @@ pub struct CascadeController {
 
     pub graph_definition: Arc<Mutex<CascadeGraph>>,
 
-    active_executions: HashMap<NodeIndex, ComponentExecution>,
+    pub active_executions: HashMap<NodeIndex, ComponentExecution>,
     connections: Arc<RwLock<HashMap<EdgeIndex, Arc<Connection>>>>,
 }
 
@@ -72,9 +72,6 @@ impl CascadeController {
 
         let mut execution: ComponentExecution = ComponentExecution::new(component, channels);
         execution.start();
-
-        info!("{} started successfully", metadata);
-
         self.active_executions.insert(node_idx, execution);
 
         Ok(metadata)
@@ -101,6 +98,7 @@ impl CascadeController {
         _edge_idx: EdgeIndex,
     ) -> Result<ComponentMetadata, RemoveConnectionError> {
         // Check if there are any active executions relating to the connection
+
         // // Try and find a relevant execution
         // let execution: ComponentExecution = self
         //     .active_executions
@@ -118,7 +116,7 @@ impl CascadeController {
         // let environment: Arc<ExecutionEnvironment> = execution.environment;
         //
         // Ok(environment.metadata.clone())
-        Err(RemoveConnectionError::ConnectionStillActive(vec![]))
+        Err(RemoveConnectionError::ConnectionRunning(vec![]))
     }
 }
 

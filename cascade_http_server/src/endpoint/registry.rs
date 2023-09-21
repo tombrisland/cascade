@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use hyper::{Body, Request};
 use tokio::sync::{Mutex, MutexGuard};
+use cascade_core::controller::CascadeController;
 
-use cascade_core::graph::graph_controller::CascadeController;
 
 use crate::endpoint::{create_json_body, EndpointResult};
 

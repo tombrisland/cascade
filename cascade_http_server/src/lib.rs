@@ -1,14 +1,19 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use hyper::service::{make_service_fn, service_fn};
 use log::info;
 use tokio::sync::Mutex;
-use cascade_core::graph::graph_controller::CascadeController;
-use crate::endpoint::control::{start_component, stop_component};
+
+use cascade_core::controller::CascadeController;
+
 use crate::endpoint::{EndpointError, EndpointResult};
-use crate::endpoint::graph::{create_component, create_connection, list_graph_connections, list_graph_nodes, remove_component, remove_connection};
+use crate::endpoint::control::{start_component, stop_component};
+use crate::endpoint::graph::{
+    create_component, create_connection, list_graph_connections, list_graph_nodes,
+    remove_component, remove_connection,
+};
 use crate::endpoint::registry::list_available_components;
 
 mod endpoint;

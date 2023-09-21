@@ -4,9 +4,9 @@ use hyper::{Body, Request, Response, StatusCode};
 use petgraph::graph::NodeIndex;
 use tokio::sync::{Mutex, MutexGuard};
 use cascade_component::component::ComponentMetadata;
-use cascade_core::graph::graph_controller::CascadeController;
-use cascade_core::graph::graph_controller_error::{StartComponentError, StopComponentError};
 use log::info;
+use cascade_core::controller::CascadeController;
+use cascade_core::controller::error::{StartComponentError, StopComponentError};
 use crate::endpoint::{EndpointError, EndpointResult, get_idx_query_parameter};
 
 
