@@ -8,6 +8,7 @@ use cascade_connection::definition::ConnectionDefinition;
 pub mod graph_builder;
 pub mod graph_controller;
 pub mod graph_controller_error;
+mod component_execution;
 
 pub type GraphInternal = Graph<ComponentDefinition, ConnectionDefinition>;
 

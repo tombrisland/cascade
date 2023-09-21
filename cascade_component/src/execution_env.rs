@@ -1,77 +1,74 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use async_channel::{Receiver, Sender};
+use futures::stream::{select_all, SelectAll};
+use futures::StreamExt;
 
 use cascade_connection::definition::DEFAULT_CONNECTION;
+use cascade_connection::{ComponentChannels, Message};
 use cascade_payload::CascadeItem;
 
 use crate::component::ComponentMetadata;
 use crate::error::ComponentError;
 
+type FusedStream<T> = SelectAll<Receiver<T>>;
+pub struct ReceiverStream<Message> {
+    select_all: FusedStream<Message>,
+}
+
+impl<Message> ReceiverStream<Message> {
+    fn new(receivers: Vec<Receiver<Message>>) -> ReceiverStream<Message> {
+        ReceiverStream {
+            select_all: select_all(receivers),
+        }
+    }
+
+    async fn recv(&mut self) -> Option<Message> {
+        self.select_all.next().await
+    }
+}
+
 pub struct ExecutionEnvironment {
     pub metadata: ComponentMetadata,
 
     // Connections which can be ignored if they don't exist
-    pub drop_connections: Vec<String>,
+    ignore_connections: Vec<String>,
 
-    rx: Vec<Arc<Receiver<CascadeItem>>>,
-    // Enable round robin of the input queues
-    rx_idx: AtomicUsize,
-
-    tx_named: HashMap<String, Arc<Sender<CascadeItem>>>,
+    pub rx: ReceiverStream<Message>,
+    tx_named: HashMap<String, Arc<Sender<Message>>>,
 }
 
 impl ExecutionEnvironment {
-    pub fn new(
-        metadata: ComponentMetadata,
-        rx: Vec<Arc<Receiver<CascadeItem>>>,
-        tx_named: HashMap<String, Arc<Sender<CascadeItem>>>,
-    ) -> ExecutionEnvironment {
-        // TODO could error here if rel not available
+    pub fn new(metadata: ComponentMetadata, channels: ComponentChannels) -> ExecutionEnvironment {
         ExecutionEnvironment {
             metadata,
-            drop_connections: vec![DEFAULT_CONNECTION.to_string()],
-            rx,
-            rx_idx: Default::default(),
-            tx_named,
+            ignore_connections: vec![DEFAULT_CONNECTION.to_string()],
+            rx: ReceiverStream::new(channels.rx),
+            tx_named: channels.tx_named,
         }
     }
 
     // Get a single item from the session
-    pub async fn recv(&self) -> Result<CascadeItem, ComponentError> {
-        let rx_idx: usize = self.rx_idx.load(Ordering::Relaxed);
-
-        self.rx_idx.store(
-            if rx_idx == self.rx.len() - 1 {
-                0
-            } else {
-                rx_idx + 1
-            },
-            Ordering::Relaxed,
-        );
-
-        self.rx
-            .get(rx_idx)
-            .unwrap()
-            .recv()
-            .await
-            .map_err(|_| ComponentError::InputClosed)
+    pub async fn recv(&mut self) -> Result<CascadeItem, ComponentError> {
+        match self.rx.recv().await.ok_or(ComponentError::InputClosed)? {
+            Message::Item(item) => Ok(item),
+            Message::ShutdownSignal => Err(ComponentError::ComponentShutdown),
+        }
     }
 
     pub async fn send(&self, name: &str, item: CascadeItem) -> Result<(), ComponentError> {
         match self.tx_named.get(name) {
             Some(connection) => connection
-                .send(item)
+                .send(Message::Item(item))
                 .await
                 .or(Err(ComponentError::OutputClosed)),
             None => {
                 // Only error if there are connections that aren't configured to drop
-                if self.tx_named.is_empty() || self.drop_connections.contains(&name.to_string()) {
+                if self.tx_named.is_empty() || self.ignore_connections.contains(&name.to_string()) {
                     Ok(())
                 } else {
-                    Err(ComponentError::MissingOutputConnection(name.to_string()))
+                    Err(ComponentError::MissingOutput(name.to_string()))
                 }
             }
         }

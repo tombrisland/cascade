@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use async_trait::async_trait;
 
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
 use cascade_component::{NamedComponent, Process};
 use cascade_component::error::ComponentError;
 use cascade_component::execution_env::ExecutionEnvironment;
 use cascade_payload::CascadeItem;
-
 
 #[derive(Serialize, Deserialize)]
 pub struct GenerateItem {
@@ -34,7 +34,7 @@ impl Process for GenerateItem {
         Arc::new(generate_item)
     }
 
-    async fn process(&self, execution: Arc<ExecutionEnvironment>) -> Result<(), ComponentError> {
+    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
         // Send as many as permitted by batch_size
         for _ in 0..self.batch_size {
             execution.send_default(CascadeItem::new(HashMap::new())).await.unwrap();

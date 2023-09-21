@@ -144,6 +144,9 @@ pub async fn remove_component(
     let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
     let mut graph_lock: MutexGuard<CascadeGraph> = controller_lock.graph_definition.lock().await;
 
+    // todo components must be stopped before removal
+
+
     match graph_lock.graph_internal.remove_node(node_idx) {
         None => Err(EndpointError::BadRequest(format!(
             "No node at idx {}",

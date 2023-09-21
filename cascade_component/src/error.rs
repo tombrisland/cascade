@@ -3,8 +3,9 @@ pub enum ComponentError {
     InputClosed,
     OutputClosed,
     MissingInputConnection,
+    ComponentShutdown,
     // No connection matching name
-    MissingOutputConnection(String),
+    MissingOutput(String),
     // Error from underlying processor
     _Error(String),
 }

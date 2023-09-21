@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 use async_channel::{bounded, Receiver, Sender};
 
@@ -7,23 +8,37 @@ use definition::ConnectionDefinition;
 
 pub mod definition;
 
+pub enum Message {
+    ShutdownSignal,
+    Item(CascadeItem),
+}
+
 pub struct Connection {
-    pub idx: usize,
     pub name: String,
 
-    pub rx: Arc<Receiver<CascadeItem>>,
-    pub tx: Arc<Sender<CascadeItem>>,
+    pub rx: Arc<RwLock<Option<Receiver<Message>>>>,
+    pub tx: Arc<Sender<Message>>,
 }
 
 impl Connection {
-    pub fn new(idx: usize, def: &ConnectionDefinition) -> Connection {
-        let (tx, rx): (Sender<CascadeItem>, Receiver<CascadeItem>) = bounded(def.max_items as usize);
+    pub fn new(def: &ConnectionDefinition) -> Connection {
+        let (tx, rx): (Sender<Message>, Receiver<Message>) = bounded(def.max_items as usize);
 
         Connection {
-            idx,
             name: def.name.clone(),
-            rx: Arc::new(rx),
+            rx: Arc::new(RwLock::new(Some(rx))),
             tx: Arc::new(tx),
         }
     }
+}
+
+#[derive(Clone)]
+pub struct ComponentChannels {
+    // Incoming connections
+    pub rx: Vec<Receiver<Message>>,
+    // Sender to dispatch signals to the component
+    pub tx_signal: Arc<Sender<Message>>,
+
+    // Named output connections
+    pub tx_named: HashMap<String, Arc<Sender<Message>>>,
 }

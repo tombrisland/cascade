@@ -1,3 +1,4 @@
+use nanoid::nanoid;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -11,6 +12,9 @@ pub enum ComponentType {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ComponentDefinition {
+    #[serde(default = "id_default", skip_deserializing)]
+    pub id: String,
+
     pub display_name: String,
 
     pub type_name: String,
@@ -21,6 +25,9 @@ pub struct ComponentDefinition {
     pub config: Value,
 }
 
+fn id_default() -> String {
+    nanoid!()
+}
 fn schedule_default() -> Schedule {
     Schedule::Interval{
         // Default to once every half second
