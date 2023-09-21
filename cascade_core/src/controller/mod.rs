@@ -19,7 +19,7 @@ use crate::registry::ComponentRegistry;
 
 pub mod error;
 
-type ConnectionsLock<'a> = RwLockWriteGuard<'a, HashMap<EdgeIndex, Arc<Connection>>>;
+pub type ConnectionsMap = HashMap<EdgeIndex, Arc<Connection>>;
 
 pub struct CascadeController {
     pub component_registry: ComponentRegistry,
@@ -27,7 +27,7 @@ pub struct CascadeController {
     pub graph_definition: Arc<Mutex<CascadeGraph>>,
 
     pub active_executions: HashMap<NodeIndex, ComponentExecution>,
-    connections: Arc<RwLock<HashMap<EdgeIndex, Arc<Connection>>>>,
+    pub connections: Arc<RwLock<ConnectionsMap>>,
 }
 
 impl CascadeController {
@@ -48,7 +48,7 @@ impl CascadeController {
         node_idx: NodeIndex,
     ) -> Result<ComponentMetadata, StartComponentError> {
         let graph: MutexGuard<CascadeGraph> = self.graph_definition.lock().await;
-        let connections_lock: ConnectionsLock = self.connections.write().await;
+        let connections_lock: RwLockWriteGuard<ConnectionsMap> = self.connections.write().await;
 
         // Initialise any missing connections and return all relevant references
         let channels: ComponentChannels =
@@ -122,7 +122,7 @@ impl CascadeController {
 
 fn init_channels_for_node(
     graph: &MutexGuard<CascadeGraph>,
-    mut connections_lock: ConnectionsLock,
+    mut connections_lock: RwLockWriteGuard<ConnectionsMap>,
     node_idx: NodeIndex,
 ) -> ComponentChannels {
     // Receivers must be owned

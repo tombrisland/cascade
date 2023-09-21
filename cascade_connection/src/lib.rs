@@ -3,14 +3,14 @@ use std::sync::{Arc, RwLock};
 
 use async_channel::{bounded, Receiver, Sender};
 
-use cascade_payload::CascadeItem;
+use cascade_payload::CascadeMessage;
 use definition::ConnectionDefinition;
 
 pub mod definition;
 
 pub enum Message {
     ShutdownSignal,
-    Item(CascadeItem),
+    Item(CascadeMessage),
 }
 
 pub struct Connection {

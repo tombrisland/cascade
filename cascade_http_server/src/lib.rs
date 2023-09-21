@@ -14,6 +14,7 @@ use crate::endpoint::graph::{
     create_component, create_connection, list_graph_connections, list_graph_nodes,
     remove_component, remove_connection,
 };
+use crate::endpoint::metrics::list_connection_size;
 use crate::endpoint::registry::list_available_components;
 
 mod endpoint;
@@ -51,6 +52,7 @@ async fn router(
         // List the current graph state
         (&Method::GET, "/list_nodes") => list_graph_nodes(controller, req).await,
         (&Method::GET, "/list_connections") => list_graph_connections(controller, req).await,
+        (&Method::GET, "/list_connection_size") => list_connection_size(controller, req).await,
         // Return 404 not found response.
         _ => Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)

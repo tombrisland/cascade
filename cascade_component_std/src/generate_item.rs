@@ -8,7 +8,7 @@ use serde_json::Value;
 use cascade_component::{NamedComponent, Process};
 use cascade_component::error::ComponentError;
 use cascade_component::execution::environment::ExecutionEnvironment;
-use cascade_payload::CascadeItem;
+use cascade_payload::CascadeMessage;
 
 #[derive(Serialize, Deserialize)]
 pub struct GenerateItem {
@@ -37,7 +37,7 @@ impl Process for GenerateItem {
     async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
         // Send as many as permitted by batch_size
         for _ in 0..self.batch_size {
-            execution.send_default(CascadeItem::new(HashMap::new())).await.unwrap();
+            execution.send_default(CascadeMessage::new(HashMap::new())).await.unwrap();
         }
 
         Ok(())

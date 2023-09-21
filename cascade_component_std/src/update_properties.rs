@@ -8,7 +8,7 @@ use serde_json::Value;
 use cascade_component::{NamedComponent, Process};
 use cascade_component::error::ComponentError;
 use cascade_component::execution::environment::ExecutionEnvironment;
-use cascade_payload::CascadeItem;
+use cascade_payload::CascadeMessage;
 
 #[derive(Serialize, Deserialize)]
 pub struct UpdateProperties {
@@ -34,7 +34,7 @@ impl Process for UpdateProperties {
     }
 
     async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
-        let mut item: CascadeItem = execution.recv().await?;
+        let mut item: CascadeMessage = execution.recv().await?;
 
         // Loop through updates and update FlowItem
         for (key, value) in self.updates.clone() {

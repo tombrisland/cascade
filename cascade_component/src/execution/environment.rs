@@ -5,7 +5,7 @@ use async_channel::Sender;
 
 use cascade_connection::{ComponentChannels, Message};
 use cascade_connection::definition::DEFAULT_CONNECTION;
-use cascade_payload::CascadeItem;
+use cascade_payload::CascadeMessage;
 
 use crate::component::ComponentMetadata;
 use crate::error::ComponentError;
@@ -32,14 +32,14 @@ impl ExecutionEnvironment {
     }
 
     // Get a single item from the session
-    pub async fn recv(&mut self) -> Result<CascadeItem, ComponentError> {
+    pub async fn recv(&mut self) -> Result<CascadeMessage, ComponentError> {
         match self.rx.recv().await.ok_or(ComponentError::InputClosed)? {
             Message::Item(item) => Ok(item),
             Message::ShutdownSignal => Err(ComponentError::ComponentShutdown),
         }
     }
 
-    pub async fn send(&self, name: &str, item: CascadeItem) -> Result<(), ComponentError> {
+    pub async fn send(&self, name: &str, item: CascadeMessage) -> Result<(), ComponentError> {
         match self.tx_named.get(name) {
             Some(connection) => connection
                 .send(Message::Item(item))
@@ -57,7 +57,7 @@ impl ExecutionEnvironment {
     }
 
     // Send to the default connection
-    pub async fn send_default(&self, item: CascadeItem) -> Result<(), ComponentError> {
+    pub async fn send_default(&self, item: CascadeMessage) -> Result<(), ComponentError> {
         self.send(DEFAULT_CONNECTION, item).await
     }
 }

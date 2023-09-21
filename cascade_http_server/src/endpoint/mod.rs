@@ -10,6 +10,7 @@ use serde_json::Error;
 pub(crate) mod control;
 pub(crate) mod graph;
 pub(crate) mod registry;
+pub(crate) mod metrics;
 
 pub enum EndpointError {
     HyperError(hyper::Error),
