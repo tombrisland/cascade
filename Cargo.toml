@@ -5,7 +5,7 @@ members = [
     "cascade_core",
     "cascade_component",
     "cascade_connection",
-    "cascade_payload",
+    "cascade_message",
     "cascade_component_std",
     "cascade_http_server"
 ]

@@ -10,7 +10,7 @@ use serde_json::Value;
 use cascade_component::{NamedComponent, Process};
 use cascade_component::error::ComponentError;
 use cascade_component::execution::environment::ExecutionEnvironment;
-use cascade_payload::CascadeMessage;
+use cascade_message::CascadeMessage;
 
 #[derive(Serialize, Deserialize)]
 pub struct LogMessageConfig {

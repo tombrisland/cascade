@@ -5,7 +5,7 @@ use async_channel::Sender;
 
 use cascade_connection::{ComponentChannels, Message};
 use cascade_connection::definition::DEFAULT_CONNECTION;
-use cascade_payload::CascadeMessage;
+use cascade_message::CascadeMessage;
 
 use crate::component::ComponentMetadata;
 use crate::error::ComponentError;

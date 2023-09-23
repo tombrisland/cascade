@@ -9,4 +9,4 @@ async-channel = "1.9.0"
 
 serde = { version = "1.0.188", features = ["derive"] }
 
-cascade_payload = { path = "../cascade_payload" }
+cascade_message = { path = "../cascade_message" }

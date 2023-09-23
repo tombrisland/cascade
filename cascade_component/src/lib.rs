@@ -11,7 +11,7 @@ pub mod definition;
 pub mod error;
 pub mod execution;
 
-/// Implemented by all components to statically defined type name
+/// Implemented by all components to statically define type name
 pub trait NamedComponent {
     fn type_name() -> &'static str
     where

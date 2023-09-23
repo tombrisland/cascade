@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use async_channel::{bounded, Receiver, Sender};
 
-use cascade_payload::CascadeMessage;
+use cascade_message::CascadeMessage;
 use definition::ConnectionDefinition;
 
 pub mod definition;

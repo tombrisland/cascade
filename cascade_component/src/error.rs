@@ -7,5 +7,5 @@ pub enum ComponentError {
     // No connection matching name
     MissingOutput(String),
     // Error from underlying processor
-    _Error(String),
+    Error(String),
 }

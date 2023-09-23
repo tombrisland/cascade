@@ -73,7 +73,7 @@ dependencies = [
  "async-channel",
  "async-trait",
  "cascade_connection",
- "cascade_payload",
+ "cascade_message",
  "futures",
  "log",
  "nanoid",
@@ -88,7 +88,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "cascade_component",
- "cascade_payload",
+ "cascade_message",
  "log",
  "serde",
  "serde_json",
@@ -99,7 +99,7 @@ name = "cascade_connection"
 version = "0.1.0"
 dependencies = [
  "async-channel",
- "cascade_payload",
+ "cascade_message",
  "nanoid",
  "serde",
 ]
@@ -111,7 +111,7 @@ dependencies = [
  "async-channel",
  "cascade_component",
  "cascade_connection",
- "cascade_payload",
+ "cascade_message",
  "log",
  "petgraph",
  "serde",
@@ -137,7 +137,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cascade_payload"
+name = "cascade_message"
 version = "0.1.0"
 dependencies = [
  "nanoid",
