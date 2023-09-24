@@ -5,10 +5,10 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use cascade_component::{NamedComponent, Process};
-use cascade_component::error::ComponentError;
-use cascade_component::execution::environment::ExecutionEnvironment;
-use cascade_message::CascadeMessage;
+use cascade_api::component::{NamedComponent, Process};
+use cascade_api::component::environment::ExecutionEnvironment;
+use cascade_api::component::error::ComponentError;
+use cascade_api::message::Message;
 
 #[derive(Serialize, Deserialize)]
 pub struct GenerateItem {
@@ -19,7 +19,10 @@ pub struct GenerateItem {
 }
 
 impl NamedComponent for GenerateItem {
-    fn type_name() -> &'static str where Self: Sized {
+    fn type_name() -> &'static str
+    where
+        Self: Sized,
+    {
         "GenerateItem"
     }
 }
@@ -27,8 +30,7 @@ impl NamedComponent for GenerateItem {
 #[async_trait]
 
 impl Process for GenerateItem {
-    fn create_from_json(config: Value) -> Arc<dyn Process>
-    {
+    fn create_from_json(config: Value) -> Arc<dyn Process> {
         let generate_item: GenerateItem = serde_json::from_value(config).unwrap();
 
         Arc::new(generate_item)
@@ -37,7 +39,10 @@ impl Process for GenerateItem {
     async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
         // Send as many as permitted by batch_size
         for _ in 0..self.batch_size {
-            execution.send_default(CascadeMessage::new(HashMap::new())).await.unwrap();
+            execution
+                .send_default(Message::new(HashMap::new()))
+                .await
+                .unwrap();
         }
 
         Ok(())

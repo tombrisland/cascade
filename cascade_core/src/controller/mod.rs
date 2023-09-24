@@ -7,17 +7,19 @@ use petgraph::Direction;
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use tokio::sync::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 
-use cascade_component::component::{Component, ComponentMetadata, Schedule};
-use cascade_component::definition::ComponentDefinition;
-use cascade_component::execution::ComponentExecution;
-use cascade_connection::{ComponentChannels, Connection, Message};
-use cascade_connection::definition::ConnectionDefinition;
+use cascade_api::component::component::{Component, ComponentMetadata, Schedule};
+use cascade_api::component::definition::ComponentDefinition;
+use cascade_api::connection::{ComponentChannels, Connection};
+use cascade_api::connection::definition::ConnectionDefinition;
+use cascade_api::message::InternalMessage;
 
 use crate::controller::error::{RemoveConnectionError, StartComponentError, StopComponentError};
+use crate::controller::execution::ComponentExecution;
 use crate::graph::CascadeGraph;
 use crate::registry::ComponentRegistry;
 
 pub mod error;
+mod execution;
 
 pub type ConnectionsMap = HashMap<EdgeIndex, Arc<Connection>>;
 
@@ -126,8 +128,8 @@ fn init_channels_for_node(
     node_idx: NodeIndex,
 ) -> ComponentChannels {
     // Receivers must be owned
-    let mut rx_channels: Vec<Receiver<Message>> = Default::default();
-    let mut tx_named: HashMap<String, Arc<Sender<Message>>> = Default::default();
+    let mut rx_channels: Vec<Receiver<InternalMessage>> = Default::default();
+    let mut tx_named: HashMap<String, Arc<Sender<InternalMessage>>> = Default::default();
 
     for (direction, idx) in graph.get_edges_for_node(node_idx) {
         let def: &ConnectionDefinition = graph.get_connection_for_edge(idx.clone()).unwrap();
@@ -149,7 +151,7 @@ fn init_channels_for_node(
     }
 
     // Create an extra channel to send signals to the components
-    let (tx_signal, rx_signal): (Sender<Message>, Receiver<Message>) = unbounded();
+    let (tx_signal, rx_signal): (Sender<InternalMessage>, Receiver<InternalMessage>) = unbounded();
 
     rx_channels.push(rx_signal);
 

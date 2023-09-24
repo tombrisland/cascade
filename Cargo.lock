@@ -67,19 +67,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
 
 [[package]]
-name = "cascade_component"
+name = "cascade_api"
 version = "0.1.0"
 dependencies = [
  "async-channel",
  "async-trait",
- "cascade_connection",
- "cascade_message",
  "futures",
- "log",
  "nanoid",
  "serde",
  "serde_json",
- "tokio",
 ]
 
 [[package]]
@@ -87,21 +83,10 @@ name = "cascade_component_std"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "cascade_component",
- "cascade_message",
+ "cascade_api",
  "log",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "cascade_connection"
-version = "0.1.0"
-dependencies = [
- "async-channel",
- "cascade_message",
- "nanoid",
- "serde",
 ]
 
 [[package]]
@@ -109,9 +94,7 @@ name = "cascade_core"
 version = "0.1.0"
 dependencies = [
  "async-channel",
- "cascade_component",
- "cascade_connection",
- "cascade_message",
+ "cascade_api",
  "log",
  "petgraph",
  "serde",
@@ -123,9 +106,8 @@ dependencies = [
 name = "cascade_http_server"
 version = "0.1.0"
 dependencies = [
- "cascade_component",
+ "cascade_api",
  "cascade_component_std",
- "cascade_connection",
  "cascade_core",
  "hyper",
  "log",
@@ -134,13 +116,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "url",
-]
-
-[[package]]
-name = "cascade_message"
-version = "0.1.0"
-dependencies = [
- "nanoid",
 ]
 
 [[package]]

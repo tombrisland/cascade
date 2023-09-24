@@ -1,7 +1,7 @@
 use petgraph::Graph;
 use petgraph::graph::NodeIndex;
-use cascade_component::definition::ComponentDefinition;
-use cascade_connection::definition::ConnectionDefinition;
+use cascade_api::component::definition::ComponentDefinition;
+use cascade_api::connection::definition::ConnectionDefinition;
 use crate::graph::{CascadeGraph, GraphInternal};
 
 

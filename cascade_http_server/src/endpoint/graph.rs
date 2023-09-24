@@ -5,8 +5,8 @@ use log::info;
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use tokio::sync::{Mutex, MutexGuard};
 
-use cascade_component::definition::ComponentDefinition;
-use cascade_connection::definition::ConnectionDefinition;
+use cascade_api::component::definition::ComponentDefinition;
+use cascade_api::connection::definition::ConnectionDefinition;
 use cascade_core::controller::CascadeController;
 use cascade_core::graph::{CascadeGraph, GraphInternal};
 
@@ -108,8 +108,8 @@ pub async fn create_connection(
 ) -> EndpointResult {
     let def: ConnectionDefinition = deserialise_body(request).await?;
 
-    let from: NodeIndex = NodeIndex::new(def.from);
-    let to: NodeIndex = NodeIndex::new(def.to);
+    let from: NodeIndex = NodeIndex::new(def.source);
+    let to: NodeIndex = NodeIndex::new(def.target);
 
     let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
     let graph_internal: &mut GraphInternal =

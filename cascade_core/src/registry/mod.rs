@@ -3,10 +3,10 @@ use std::sync::Arc;
 
 use log::info;
 use serde_json::Value;
-use cascade_component::component::{Component, ComponentMetadata};
-use cascade_component::definition::ComponentDefinition;
-use cascade_component::Process;
 
+use cascade_api::component::component::{Component, ComponentMetadata};
+use cascade_api::component::definition::ComponentDefinition;
+use cascade_api::component::Process;
 
 pub type ComponentMap = HashMap<&'static str, fn(Value) -> Arc<dyn Process>>;
 
@@ -17,11 +17,14 @@ pub struct ComponentRegistry {
 
 impl ComponentRegistry {
     pub fn new(components: ComponentMap) -> ComponentRegistry {
-        components.iter().for_each(|(name, _)| {
-            info!("Loaded component {}", name)
-        });
+        components
+            .iter()
+            .for_each(|(name, _)| info!("Loaded component {}", name));
 
-        info!("Loaded {} component implementations into registry", components.len());
+        info!(
+            "Loaded {} component implementations into registry",
+            components.len()
+        );
 
         ComponentRegistry { components }
     }
@@ -37,7 +40,7 @@ impl ComponentRegistry {
         let implementation: Arc<dyn Process> = self
             .components
             .get(metadata.type_name.as_str())
-            .map(|constructor| constructor.call((def.config.clone(), )))?;
+            .map(|constructor| constructor.call((def.config.clone(),)))?;
 
         Some(Component {
             metadata,

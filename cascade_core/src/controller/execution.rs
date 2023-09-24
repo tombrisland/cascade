@@ -1,6 +1,3 @@
-pub mod environment;
-mod stream;
-
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -10,11 +7,12 @@ use tokio::task::{JoinError, JoinSet};
 use tokio::time::{interval, Interval};
 use tokio::time::MissedTickBehavior::Delay;
 
-use cascade_connection::{ComponentChannels, Message};
-use crate::component::{Component, ComponentMetadata, Schedule};
-use crate::error::ComponentError;
-use crate::execution::environment::ExecutionEnvironment;
-use crate::Process;
+use cascade_api::component::component::{Component, ComponentMetadata, Schedule};
+use cascade_api::component::environment::ExecutionEnvironment;
+use cascade_api::component::error::ComponentError;
+use cascade_api::component::Process;
+use cascade_api::connection::ComponentChannels;
+use cascade_api::message::InternalMessage;
 
 pub struct ComponentExecution {
     // Active task for this execution
@@ -70,7 +68,7 @@ impl ComponentExecution {
         loop {
             self.channels
                 .tx_signal
-                .send(Message::ShutdownSignal)
+                .send(InternalMessage::ShutdownSignal)
                 .await
                 .unwrap();
 

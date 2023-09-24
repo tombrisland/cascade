@@ -2,14 +2,13 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use serde_json::Value;
-
-use crate::error::ComponentError;
-use crate::execution::environment::ExecutionEnvironment;
+use crate::component::environment::ExecutionEnvironment;
+use crate::component::error::ComponentError;
 
 pub mod component;
 pub mod definition;
+pub mod environment;
 pub mod error;
-pub mod execution;
 
 /// Implemented by all components to statically define type name
 pub trait NamedComponent {

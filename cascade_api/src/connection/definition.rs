@@ -7,10 +7,10 @@ pub struct ConnectionDefinition {
     pub id: String,
 
     pub name: String,
-    pub from: usize,
-    pub to: usize,
+    pub source: usize,
+    pub target: usize,
 
-    pub max_items: u32,
+    pub max_items: usize,
 }
 
 fn id_default() -> String {
@@ -18,15 +18,15 @@ fn id_default() -> String {
 }
 
 pub const DEFAULT_CONNECTION: &str = "default";
-pub const DEFAULT_MAX_ITEMS: u32 = 1000;
+pub const DEFAULT_MAX_ITEMS: usize = 1000;
 
 impl ConnectionDefinition {
     pub fn new(from: usize, to: usize) -> Self {
         ConnectionDefinition {
             id: id_default(),
             name: DEFAULT_CONNECTION.to_string(),
-            from,
-            to,
+            source: from,
+            target: to,
             max_items: DEFAULT_MAX_ITEMS,
         }
     }

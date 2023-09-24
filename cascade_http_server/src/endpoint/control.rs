@@ -3,7 +3,7 @@ use std::sync::Arc;
 use hyper::{Body, Request, Response, StatusCode};
 use petgraph::graph::NodeIndex;
 use tokio::sync::{Mutex, MutexGuard};
-use cascade_component::component::ComponentMetadata;
+use cascade_api::component::component::ComponentMetadata;
 use log::info;
 use cascade_core::controller::CascadeController;
 use cascade_core::controller::error::{StartComponentError, StopComponentError};

@@ -1,15 +1,23 @@
 use std::sync::Arc;
 
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Body, Request};
 use petgraph::graph::EdgeIndex;
+use serde::Serialize;
 use tokio::sync::{Mutex, MutexGuard, RwLockReadGuard};
 
 use cascade_core::controller::{CascadeController, ConnectionsMap};
 
-use crate::endpoint::{get_idx_query_parameter, EndpointError, EndpointResult};
+use crate::endpoint::{create_json_body, EndpointError, EndpointResult, get_idx_query_parameter};
 
-/// List the number of message on the connection
-pub async fn list_connection_size(
+#[derive(Serialize)]
+struct ConnectionMetric {
+    name: String,
+    count: usize,
+    max_items: usize,
+}
+
+/// Describe the connection state
+pub async fn stat_connection(
     controller: Arc<Mutex<CascadeController>>,
     request: Request<Body>,
 ) -> EndpointResult {
@@ -25,9 +33,10 @@ pub async fn list_connection_size(
             "No edge found at idx {}",
             edge_idx.index()
         ))),
-        Some(connection) => Ok(Response::builder()
-            .status(StatusCode::OK)
-            .body(Body::from(connection.tx.len().to_string()))
-            .unwrap()),
+        Some(connection) => Ok(create_json_body(&ConnectionMetric {
+            name: connection.name.clone(),
+            count: connection.tx.len(),
+            max_items: connection.max_items,
+        })?),
     }
 }

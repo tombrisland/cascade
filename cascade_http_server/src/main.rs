@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use log::LevelFilter;
 use tokio::sync::Mutex;
-use cascade_component::{NamedComponent, Process};
 
+use cascade_api::component::{NamedComponent, Process};
 use cascade_component_std::generate_item::GenerateItem;
 use cascade_component_std::log_message::LogMessage;
 use cascade_component_std::update_properties::UpdateProperties;
@@ -42,7 +42,7 @@ async fn main() -> Result<(), hyper::Error> {
     )));
 
     let service = CascadeServer {
-        addr: "127.0.0.1:3000".parse().unwrap(),
+        addr: "127.0.0.1:3001".parse().unwrap(),
         controller,
     };
 

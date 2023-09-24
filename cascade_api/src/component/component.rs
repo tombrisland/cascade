@@ -1,10 +1,10 @@
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
-use crate::definition::{ComponentDefinition, ComponentType};
-use crate::{NamedComponent, Process};
 use nanoid::nanoid;
 use serde::{Deserialize, Serialize};
+use crate::component::definition::{ComponentDefinition, ComponentType};
+use crate::component::{NamedComponent, Process};
 
 pub struct Component {
     pub metadata: ComponentMetadata,

@@ -7,10 +7,10 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use cascade_component::{NamedComponent, Process};
-use cascade_component::error::ComponentError;
-use cascade_component::execution::environment::ExecutionEnvironment;
-use cascade_message::CascadeMessage;
+use cascade_api::component::{NamedComponent, Process};
+use cascade_api::component::environment::ExecutionEnvironment;
+use cascade_api::component::error::ComponentError;
+use cascade_api::message::Message;
 
 #[derive(Serialize, Deserialize)]
 pub struct LogMessageConfig {
@@ -45,7 +45,7 @@ impl Process for LogMessage {
     }
 
     async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
-        let item: CascadeMessage = execution.recv().await?;
+        let item: Message = execution.recv().await?;
 
         // Increment item count and fetch the value
         let count: usize = self.item_count.fetch_add(1, Ordering::SeqCst);

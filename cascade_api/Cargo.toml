@@ -1,5 +1,5 @@
 [package]
-name = "cascade_component"
+name = "cascade_api"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,11 +10,5 @@ serde = { version = "1.0.188", features = ["derive"] }
 serde_json = { version = "1.0.107" }
 
 async-trait = "0.1.73"
-
-cascade_message = { path = "../cascade_message" }
-cascade_connection = { path = "../cascade_connection" }
-
-tokio = { version = "1.32.0", features = ["rt"] }
 async-channel = "1.9.0"
 futures = "0.3.28"
-log = "0.4.20"

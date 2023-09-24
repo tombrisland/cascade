@@ -2,8 +2,8 @@ use petgraph::{Direction, Graph, Incoming, Outgoing};
 use petgraph::graph::{EdgeIndex, NodeIndex, NodeIndices};
 use petgraph::visit::EdgeRef;
 
-use cascade_component::definition::ComponentDefinition;
-use cascade_connection::definition::ConnectionDefinition;
+use cascade_api::component::definition::ComponentDefinition;
+use cascade_api::connection::definition::ConnectionDefinition;
 
 pub mod graph_builder;
 

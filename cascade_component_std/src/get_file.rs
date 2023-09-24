@@ -9,10 +9,10 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
 
-use cascade_component::{NamedComponent, Process};
-use cascade_component::error::ComponentError;
-use cascade_component::execution::environment::ExecutionEnvironment;
-use cascade_message::CascadeMessage;
+use cascade_api::component::{NamedComponent, Process};
+use cascade_api::component::environment::ExecutionEnvironment;
+use cascade_api::component::error::ComponentError;
+use cascade_api::message::Message;
 
 const ERR_CANNOT_READ_DIR: &str = "Unable to read directory";
 
@@ -73,7 +73,7 @@ impl Process for GetFile {
 
             // Emit the file as a message
             execution
-                .send_default(CascadeMessage::new(file_properties(file, metadata)))
+                .send_default(Message::new(file_properties(file, metadata)))
                 .await?;
 
             files_read += 1;
