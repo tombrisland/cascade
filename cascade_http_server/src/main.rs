@@ -6,7 +6,7 @@ extern crate core;
 use std::sync::Arc;
 
 use log::LevelFilter;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 use cascade_api::component::{NamedComponent, Process};
 use cascade_component_std::generate_item::GenerateItem;
@@ -37,7 +37,7 @@ async fn main() -> Result<(), hyper::Error> {
         UpdateProperties::create_from_json,
     );
 
-    let controller: Arc<Mutex<CascadeController>> = Arc::new(Mutex::new(CascadeController::new(
+    let controller: Arc<RwLock<CascadeController>> = Arc::new(RwLock::new(CascadeController::new(
         ComponentRegistry::new(components),
     )));
 

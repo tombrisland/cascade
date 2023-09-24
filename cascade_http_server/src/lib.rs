@@ -4,7 +4,7 @@ use std::sync::Arc;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use hyper::service::{make_service_fn, service_fn};
 use log::info;
-use tokio::sync::Mutex;
+use tokio::sync::{RwLock};
 
 use cascade_core::controller::CascadeController;
 
@@ -24,14 +24,14 @@ static NOT_FOUND: &[u8] = b"Resource not found";
 pub struct CascadeServer {
     pub addr: SocketAddr,
 
-    pub controller: Arc<Mutex<CascadeController>>,
+    pub controller: Arc<RwLock<CascadeController>>,
 }
 
 async fn router(
-    controller: Arc<Mutex<CascadeController>>,
+    controller: Arc<RwLock<CascadeController>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, hyper::Error> {
-    let controller: Arc<Mutex<CascadeController>> = Arc::clone(&controller);
+    let controller: Arc<RwLock<CascadeController>> = Arc::clone(&controller);
 
     let result: EndpointResult = match (req.method(), req.uri().path()) {
         // Retrieve information from the component registry
@@ -84,7 +84,7 @@ impl CascadeServer {
         info!("Starting server on {}", &self.addr);
 
         let service = make_service_fn(move |_| {
-            let controller: Arc<Mutex<CascadeController>> = Arc::clone(&self.controller);
+            let controller: Arc<RwLock<CascadeController>> = Arc::clone(&self.controller);
 
             async { Ok::<_, ServerError>(service_fn(move |req| router(controller.clone(), req))) }
         });

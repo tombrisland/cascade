@@ -3,7 +3,7 @@ use std::sync::Arc;
 use hyper::{Body, Request, Response, StatusCode};
 use log::info;
 use petgraph::graph::{EdgeIndex, NodeIndex};
-use tokio::sync::{Mutex, MutexGuard};
+use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use cascade_api::component::definition::ComponentDefinition;
 use cascade_api::connection::definition::ConnectionDefinition;
@@ -11,17 +11,16 @@ use cascade_core::controller::CascadeController;
 use cascade_core::graph::{CascadeGraph, GraphInternal};
 
 use crate::endpoint::{
-    create_json_body, deserialise_body, get_idx_query_parameter, EndpointError, EndpointResult,
+    create_json_body, deserialise_body, EndpointError, EndpointResult, get_idx_query_parameter,
 };
 
 /// List the component definitions in the graph
 pub async fn list_graph_nodes(
-    controller: Arc<Mutex<CascadeController>>,
+    controller: Arc<RwLock<CascadeController>>,
     _: Request<Body>,
 ) -> EndpointResult {
-    // TODO this could probably be a RwLock instead
-    let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
-    let graph_lock: MutexGuard<CascadeGraph> = controller_lock.graph_definition.lock().await;
+    let controller_lock: RwLockReadGuard<CascadeController> = controller.read().await;
+    let graph_lock: RwLockReadGuard<CascadeGraph> = controller_lock.graph_definition.read().await;
 
     let definitions: Vec<ComponentDefinition> = graph_lock
         .graph_internal
@@ -35,11 +34,11 @@ pub async fn list_graph_nodes(
 
 /// List the connection definitions in the graph
 pub async fn list_graph_connections(
-    controller: Arc<Mutex<CascadeController>>,
+    controller: Arc<RwLock<CascadeController>>,
     _: Request<Body>,
 ) -> EndpointResult {
-    let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
-    let graph_lock: MutexGuard<CascadeGraph> = controller_lock.graph_definition.lock().await;
+    let controller_lock: RwLockReadGuard<CascadeController> = controller.read().await;
+    let graph_lock: RwLockReadGuard<CascadeGraph> = controller_lock.graph_definition.read().await;
 
     let definitions: Vec<ConnectionDefinition> = graph_lock
         .graph_internal
@@ -56,13 +55,13 @@ pub async fn list_graph_connections(
 ///     The JSON is malformed or doesn't match ComponentDefinition
 ///     The named component does not exist in the registry
 pub async fn create_component(
-    controller: Arc<Mutex<CascadeController>>,
+    controller: Arc<RwLock<CascadeController>>,
     request: Request<Body>,
 ) -> EndpointResult {
     let def: ComponentDefinition = deserialise_body(request).await?;
     let type_name: String = def.type_name.clone();
 
-    let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
+    let controller_lock: RwLockWriteGuard<CascadeController> = controller.write().await;
 
     // Error early if the component type is not known
     if !controller_lock
@@ -80,7 +79,7 @@ pub async fn create_component(
     // Create a node for the component definition in the graph
     let node_idx: NodeIndex = controller_lock
         .graph_definition
-        .lock()
+        .write()
         .await
         .graph_internal
         .add_node(def);
@@ -103,7 +102,7 @@ pub async fn create_component(
 ///     The JSON is malformed or doesn't match ConnectionDefinition
 ///     The nodes referenced by the connection don't exist
 pub async fn create_connection(
-    controller: Arc<Mutex<CascadeController>>,
+    controller: Arc<RwLock<CascadeController>>,
     request: Request<Body>,
 ) -> EndpointResult {
     let def: ConnectionDefinition = deserialise_body(request).await?;
@@ -111,9 +110,12 @@ pub async fn create_connection(
     let from: NodeIndex = NodeIndex::new(def.source);
     let to: NodeIndex = NodeIndex::new(def.target);
 
-    let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
-    let graph_internal: &mut GraphInternal =
-        &mut controller_lock.graph_definition.lock().await.graph_internal;
+    let controller_lock: RwLockWriteGuard<CascadeController> = controller.write().await;
+    let graph_internal: &mut GraphInternal = &mut controller_lock
+        .graph_definition
+        .write()
+        .await
+        .graph_internal;
 
     // Check whether the nodes from the definition exist in the graph
 
@@ -139,13 +141,14 @@ pub async fn create_connection(
 ///     The component doesn't exist
 ///     There are connections attached to the node
 pub async fn remove_component(
-    controller: Arc<Mutex<CascadeController>>,
+    controller: Arc<RwLock<CascadeController>>,
     request: Request<Body>,
 ) -> EndpointResult {
     let node_idx: NodeIndex = NodeIndex::new(get_idx_query_parameter(request)?);
 
-    let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
-    let mut graph_lock: MutexGuard<CascadeGraph> = controller_lock.graph_definition.lock().await;
+    let controller_lock: RwLockWriteGuard<CascadeController> = controller.write().await;
+    let mut graph_lock: RwLockWriteGuard<CascadeGraph> =
+        controller_lock.graph_definition.write().await;
 
     // Error if component is still running
     if controller_lock.active_executions.contains_key(&node_idx) {
@@ -177,13 +180,14 @@ pub async fn remove_component(
 ///     The connection does not exist
 ///     There are components attached to it still running
 pub async fn remove_connection(
-    controller: Arc<Mutex<CascadeController>>,
+    controller: Arc<RwLock<CascadeController>>,
     request: Request<Body>,
 ) -> EndpointResult {
     let edge_idx: EdgeIndex = EdgeIndex::new(get_idx_query_parameter(request)?);
 
-    let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
-    let mut graph_lock: MutexGuard<CascadeGraph> = controller_lock.graph_definition.lock().await;
+    let controller_lock: RwLockWriteGuard<CascadeController> = controller.write().await;
+    let mut graph_lock: RwLockWriteGuard<CascadeGraph> =
+        controller_lock.graph_definition.write().await;
 
     let (node_source, node_dest): (NodeIndex, NodeIndex) = graph_lock
         .graph_internal

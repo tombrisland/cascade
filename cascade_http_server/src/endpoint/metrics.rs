@@ -3,7 +3,7 @@ use std::sync::Arc;
 use hyper::{Body, Request};
 use petgraph::graph::EdgeIndex;
 use serde::Serialize;
-use tokio::sync::{Mutex, MutexGuard, RwLockReadGuard};
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 use cascade_core::controller::{CascadeController, ConnectionsMap};
 
@@ -18,12 +18,12 @@ struct ConnectionMetric {
 
 /// Describe the connection state
 pub async fn stat_connection(
-    controller: Arc<Mutex<CascadeController>>,
+    controller: Arc<RwLock<CascadeController>>,
     request: Request<Body>,
 ) -> EndpointResult {
     let edge_idx: EdgeIndex = EdgeIndex::new(get_idx_query_parameter(request)?);
 
-    let controller_lock: MutexGuard<CascadeController> = controller.lock().await;
+    let controller_lock: RwLockReadGuard<CascadeController> = controller.read().await;
 
     let connections_lock: RwLockReadGuard<ConnectionsMap> =
         controller_lock.connections.read().await;

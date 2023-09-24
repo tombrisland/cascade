@@ -5,7 +5,7 @@ use async_channel::{Receiver, Sender, unbounded};
 use log::info;
 use petgraph::Direction;
 use petgraph::graph::{EdgeIndex, NodeIndex};
-use tokio::sync::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
+use tokio::sync::{RwLock, RwLockWriteGuard};
 
 use cascade_api::component::component::{Component, ComponentMetadata, Schedule};
 use cascade_api::component::definition::ComponentDefinition;
@@ -26,7 +26,7 @@ pub type ConnectionsMap = HashMap<EdgeIndex, Arc<Connection>>;
 pub struct CascadeController {
     pub component_registry: ComponentRegistry,
 
-    pub graph_definition: Arc<Mutex<CascadeGraph>>,
+    pub graph_definition: Arc<RwLock<CascadeGraph>>,
 
     pub active_executions: HashMap<NodeIndex, ComponentExecution>,
     pub connections: Arc<RwLock<ConnectionsMap>>,
@@ -35,7 +35,7 @@ pub struct CascadeController {
 impl CascadeController {
     pub fn new(component_registry: ComponentRegistry) -> CascadeController {
         CascadeController {
-            graph_definition: Arc::new(Mutex::new(CascadeGraph {
+            graph_definition: Arc::new(RwLock::new(CascadeGraph {
                 graph_internal: Default::default(),
             })),
             component_registry,
@@ -49,7 +49,7 @@ impl CascadeController {
         &mut self,
         node_idx: NodeIndex,
     ) -> Result<ComponentMetadata, StartComponentError> {
-        let graph: MutexGuard<CascadeGraph> = self.graph_definition.lock().await;
+        let graph: RwLockWriteGuard<CascadeGraph> = self.graph_definition.write().await;
         let connections_lock: RwLockWriteGuard<ConnectionsMap> = self.connections.write().await;
 
         // Initialise any missing connections and return all relevant references
@@ -123,7 +123,7 @@ impl CascadeController {
 }
 
 fn init_channels_for_node(
-    graph: &MutexGuard<CascadeGraph>,
+    graph: &RwLockWriteGuard<CascadeGraph>,
     mut connections_lock: RwLockWriteGuard<ConnectionsMap>,
     node_idx: NodeIndex,
 ) -> ComponentChannels {

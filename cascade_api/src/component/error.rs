@@ -1,11 +1,19 @@
+use std::io::Error;
+
 #[derive(Debug)]
 pub enum ComponentError {
+    ComponentShutdown,
     InputClosed,
     OutputClosed,
-    MissingInputConnection,
-    ComponentShutdown,
-    // No connection matching name
+    MissingInput,
     MissingOutput(String),
-    // Error from underlying processor
-    Error(String),
+    // Errors from underlying processor
+    IOError(Error),
+    RuntimeError(String),
+}
+
+impl From<Error> for ComponentError {
+    fn from(value: Error) -> Self {
+        ComponentError::IOError(value)
+    }
 }
