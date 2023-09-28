@@ -44,7 +44,7 @@ pub async fn start_component(
                 .body(Body::from(message))?)
         }
         Err(err) => Err(EndpointError::BadRequest(format!(
-            "Encountered {:?} when starting {}",
+            "Encountered {:?} when starting idx {}",
             err,
             node_idx.index()
         ))),
@@ -82,7 +82,7 @@ pub async fn stop_component(
                 .body(Body::from(message))?)
         }
         Err(err) => Err(EndpointError::BadRequest(format!(
-            "Encountered {:?} when stopping {}",
+            "Encountered {:?} when stopping idx {}",
             err,
             node_idx.index()
         ))),

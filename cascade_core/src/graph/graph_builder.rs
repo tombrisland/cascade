@@ -6,16 +6,16 @@ use crate::graph::{CascadeGraph, GraphInternal};
 
 
 // Represents a graph of the entire graph
-pub struct _CascadeGraphBuilder {
+pub struct CascadeGraphBuilder {
     graph_internal: GraphInternal,
 
     // Last node added
     last_index: Option<NodeIndex>,
 }
 
-impl _CascadeGraphBuilder {
-    pub fn new() -> _CascadeGraphBuilder {
-        _CascadeGraphBuilder {
+impl CascadeGraphBuilder {
+    pub fn new() -> CascadeGraphBuilder {
+        CascadeGraphBuilder {
             graph_internal: Graph::new(),
             last_index: None,
         }
@@ -25,7 +25,7 @@ impl _CascadeGraphBuilder {
     pub fn add_component(
         mut self,
         def: ComponentDefinition,
-    ) -> _CascadeGraphBuilder {
+    ) -> CascadeGraphBuilder {
         let index = self.graph_internal.add_node(def);
 
         // Set the last_index to enable connect_to_previous
@@ -38,7 +38,7 @@ impl _CascadeGraphBuilder {
     pub fn connect_to_previous(
         &mut self,
         def: ComponentDefinition,
-    ) -> &_CascadeGraphBuilder {
+    ) -> &CascadeGraphBuilder {
         if self.last_index.is_some() {
             let source: NodeIndex = self.last_index.unwrap();
             let destination: NodeIndex = self.graph_internal.add_node(def);

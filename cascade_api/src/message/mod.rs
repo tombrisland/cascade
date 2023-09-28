@@ -6,7 +6,7 @@ use nanoid::nanoid;
 
 use crate::message::content::Content;
 
-mod content;
+pub mod content;
 
 /// Wraps message to pass signals to the component runtime
 pub enum InternalMessage {
@@ -24,6 +24,8 @@ pub struct Message {
     pub content: HashMap<String, Content>,
 }
 
+const DEFAULT_CONTENT_REFERENCE: &str = "default";
+
 impl Message {
     pub fn new(properties: HashMap<String, String>) -> Message {
         Message {
@@ -34,6 +36,19 @@ impl Message {
                 .as_nanos(),
             // No content to begin with
             content: Default::default(),
+            properties,
+        }
+    }
+
+    pub fn new_with_content(properties: HashMap<String, String>, content: Content) -> Message {
+        Message {
+            id: nanoid!(),
+            created_nanos: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos(),
+            // Start with default content populated
+            content: HashMap::from([(DEFAULT_CONTENT_REFERENCE.to_string(), content)]),
             properties,
         }
     }

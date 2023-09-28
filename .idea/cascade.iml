@@ -7,7 +7,9 @@
       <sourceFolder url="file://$MODULE_DIR$/cascade_component_std/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cascade_connection/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cascade_core/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/cascade_core/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/cascade_http_server/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/cascade_integration_test/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/cascade_message/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/cascade_api/target" />

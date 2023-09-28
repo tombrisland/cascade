@@ -5,5 +5,6 @@ members = [
     "cascade_api",
     "cascade_core",
     "cascade_component_std",
-    "cascade_http_server"
+    "cascade_http_server",
+    "cascade_integration_test"
 ]

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use async_channel::{Receiver, Sender};
 use futures::stream::{select_all, SelectAll};
@@ -36,7 +35,7 @@ pub struct ExecutionEnvironment {
     ignore_connections: Vec<String>,
 
     pub rx: FusedStream<InternalMessage>,
-    tx_named: HashMap<String, Arc<Sender<InternalMessage>>>,
+    tx_named: HashMap<String, Sender<InternalMessage>>,
 }
 
 impl ExecutionEnvironment {

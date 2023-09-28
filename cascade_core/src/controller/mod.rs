@@ -21,7 +21,7 @@ use crate::registry::ComponentRegistry;
 pub mod error;
 mod execution;
 
-pub type ConnectionsMap = HashMap<EdgeIndex, Arc<Connection>>;
+pub type ConnectionsMap = HashMap<EdgeIndex, Connection>;
 
 pub struct CascadeController {
     pub component_registry: ComponentRegistry,
@@ -87,10 +87,13 @@ impl CascadeController {
         let mut execution: ComponentExecution = self
             .active_executions
             .remove(&node_idx)
-            // Error if we there is no execution started
+            // Error if there was no execution started
             .ok_or(StopComponentError::ComponentNotStarted(node_idx.index()))?;
 
-        execution.stop().await.unwrap();
+        execution
+            .stop()
+            .await
+            .map_err(|_| StopComponentError::FailedToStop)?;
 
         Ok(execution.component.metadata.clone())
     }
@@ -129,24 +132,23 @@ fn init_channels_for_node(
 ) -> ComponentChannels {
     // Receivers must be owned
     let mut rx_channels: Vec<Receiver<InternalMessage>> = Default::default();
-    let mut tx_named: HashMap<String, Arc<Sender<InternalMessage>>> = Default::default();
+    let mut tx_named: HashMap<String, Sender<InternalMessage>> = Default::default();
 
     for (direction, idx) in graph.get_edges_for_node(node_idx) {
         let def: &ConnectionDefinition = graph.get_connection_for_edge(idx.clone()).unwrap();
 
         // Insert the new connection into the map for sharing across components
-        let connection: Arc<Connection> = Arc::clone(
+        let connection: &mut Connection =
             connections_lock
                 .entry(idx.clone())
-                .or_insert_with(|| Arc::new(Connection::new(def))),
-        );
+                .or_insert_with(|| Connection::new(def));
 
         match direction {
             // Include entry in the map by name
             Direction::Outgoing => {
                 tx_named.insert(connection.name.clone(), connection.tx.clone());
             }
-            Direction::Incoming => rx_channels.push(connection.rx.write().unwrap().take().unwrap()),
+            Direction::Incoming => rx_channels.push(connection.rx.clone()),
         };
     }
 
@@ -157,7 +159,7 @@ fn init_channels_for_node(
 
     ComponentChannels {
         rx: rx_channels,
-        tx_signal: Arc::new(tx_signal),
+        tx_signal,
         tx_named,
     }
 }

@@ -41,8 +41,7 @@ impl Process for GenerateItem {
         for _ in 0..self.batch_size {
             execution
                 .send_default(Message::new(HashMap::new()))
-                .await
-                .unwrap();
+                .await?;
         }
 
         Ok(())
