@@ -28,7 +28,8 @@ pub struct CascadeController {
 
     pub graph_definition: Arc<RwLock<CascadeGraph>>,
 
-    pub active_executions: HashMap<NodeIndex, ComponentExecution>,
+    pub executions: HashMap<NodeIndex, ComponentExecution>,
+
     pub connections: Arc<RwLock<ConnectionsMap>>,
 }
 
@@ -41,7 +42,7 @@ impl CascadeController {
             component_registry,
 
             connections: Default::default(),
-            active_executions: Default::default(),
+            executions: Default::default(),
         }
     }
 
@@ -74,7 +75,7 @@ impl CascadeController {
 
         let mut execution: ComponentExecution = ComponentExecution::new(component, channels);
         execution.start();
-        self.active_executions.insert(node_idx, execution);
+        self.executions.insert(node_idx, execution);
 
         Ok(metadata)
     }
@@ -84,9 +85,9 @@ impl CascadeController {
         node_idx: NodeIndex,
     ) -> Result<ComponentMetadata, StopComponentError> {
         // Try and find a relevant execution
-        let mut execution: ComponentExecution = self
-            .active_executions
-            .remove(&node_idx)
+        let execution: &mut ComponentExecution = self
+            .executions
+            .get_mut(&node_idx)
             // Error if there was no execution started
             .ok_or(StopComponentError::ComponentNotStarted(node_idx.index()))?;
 
@@ -96,6 +97,14 @@ impl CascadeController {
             .map_err(|_| StopComponentError::FailedToStop)?;
 
         Ok(execution.component.metadata.clone())
+    }
+
+    pub async fn kill_component(&mut self, node_idx: NodeIndex) {
+        // Try and find a relevant execution
+        if let Some(mut execution) = self.executions.remove(&node_idx) {
+            // Kill all associated threads
+            execution.kill().await;
+        }
     }
 
     pub async fn remove_connection(
@@ -138,10 +147,9 @@ fn init_channels_for_node(
         let def: &ConnectionDefinition = graph.get_connection_for_edge(idx.clone()).unwrap();
 
         // Insert the new connection into the map for sharing across components
-        let connection: &mut Connection =
-            connections_lock
-                .entry(idx.clone())
-                .or_insert_with(|| Connection::new(def));
+        let connection: &mut Connection = connections_lock
+            .entry(idx.clone())
+            .or_insert_with(|| Connection::new(def));
 
         match direction {
             // Include entry in the map by name

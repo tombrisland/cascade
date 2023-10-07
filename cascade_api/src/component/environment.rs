@@ -34,7 +34,9 @@ pub struct ExecutionEnvironment {
     // Connections which can be ignored if they don't exist
     ignore_connections: Vec<String>,
 
-    pub rx: FusedStream<InternalMessage>,
+    in_progress: Option<Message>,
+
+    rx: FusedStream<InternalMessage>,
     tx_named: HashMap<String, Sender<InternalMessage>>,
 }
 
@@ -43,25 +45,36 @@ impl ExecutionEnvironment {
         ExecutionEnvironment {
             metadata,
             ignore_connections: vec![DEFAULT_CONNECTION.to_string()],
+            in_progress: None,
             rx: FusedStream::new(channels.rx),
             tx_named: channels.tx_named,
         }
     }
 
     // Get a single item from the session
-    pub async fn recv(&mut self) -> Result<Message, ComponentError> {
+    pub async fn recv(&mut self) -> Result<&Message, ComponentError> {
         match self.rx.recv().await.ok_or(ComponentError::InputClosed)? {
-            InternalMessage::Item(item) => Ok(item),
+            InternalMessage::Item(item) => {
+                // Store the item in-progress
+                Ok(self.in_progress.insert(item))
+            }
             InternalMessage::ShutdownSignal => Err(ComponentError::ComponentShutdown),
         }
     }
 
-    pub async fn send(&self, name: &str, item: Message) -> Result<(), ComponentError> {
+    pub async fn send(&mut self, name: &str, item: Message) -> Result<(), ComponentError> {
         match self.tx_named.get(name) {
-            Some(connection) => connection
-                .send(InternalMessage::Item(item))
-                .await
-                .or(Err(ComponentError::OutputClosed)),
+            Some(connection) => {
+                connection
+                    .send(InternalMessage::Item(item))
+                    .await
+                    .or(Err(ComponentError::OutputClosed))?;
+
+                // Remove the item from in-progress
+                self.in_progress.take();
+
+                Ok(())
+            }
             None => {
                 // Only error if there are connections that aren't configured to drop
                 if self.tx_named.is_empty() || self.ignore_connections.contains(&name.to_string()) {
@@ -74,7 +87,7 @@ impl ExecutionEnvironment {
     }
 
     // Send to the default connection
-    pub async fn send_default(&self, item: Message) -> Result<(), ComponentError> {
+    pub async fn send_default(&mut self, item: Message) -> Result<(), ComponentError> {
         self.send(DEFAULT_CONNECTION, item).await
     }
 }

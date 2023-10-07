@@ -20,7 +20,7 @@ pub struct ComponentExecution {
 
     pub component: Arc<Component>,
 
-    shutdown: Arc<AtomicBool>,
+    stopped: Arc<AtomicBool>,
     channels: ComponentChannels,
 }
 
@@ -29,7 +29,7 @@ impl ComponentExecution {
         ComponentExecution {
             tasks: JoinSet::new(),
             component: Arc::new(component),
-            shutdown: Default::default(),
+            stopped: Default::default(),
             channels,
         }
     }
@@ -62,24 +62,24 @@ impl ComponentExecution {
     }
 
     pub async fn stop(&mut self) -> Result<(), JoinError> {
-        self.shutdown.store(true, Ordering::Relaxed);
+        self.stopped.store(true, Ordering::Relaxed);
 
-        // Wait for all tasks to stop
-        loop {
+        for _ in 0..self.tasks.len() {
+            // Send a cancellation message to the thread
             self.channels
                 .tx_signal
                 .send(InternalMessage::ShutdownSignal)
                 .await
                 .unwrap();
-
-            match self.tasks.join_next().await {
-                // Finished joining tasks
-                None => break,
-                Some(res) => res?,
-            }
         }
 
+
+
         Ok(())
+    }
+
+    pub async fn kill(&mut self) {
+        self.tasks.shutdown().await
     }
 
     fn schedule_component(
@@ -88,7 +88,7 @@ impl ComponentExecution {
         mut interval: Option<Interval>,
     ) {
         let implementation: Arc<dyn Process> = self.component.implementation.clone();
-        let shutdown: Arc<AtomicBool> = self.shutdown.clone();
+        let stopped: Arc<AtomicBool> = self.stopped.clone();
 
         self.tasks.spawn(async move {
             loop {
@@ -96,8 +96,7 @@ impl ComponentExecution {
                     interval.tick().await;
                 }
 
-                // Enable shutdown for components which don't read input
-                if shutdown.load(Ordering::Relaxed) {
+                if stopped.load(Ordering::Relaxed) {
                     break;
                 }
 

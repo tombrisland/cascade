@@ -151,7 +151,7 @@ pub async fn remove_component(
         controller_lock.graph_definition.write().await;
 
     // Error if component is still running
-    if controller_lock.active_executions.contains_key(&node_idx) {
+    if controller_lock.executions.contains_key(&node_idx) {
         return Err(EndpointError::BadRequest(format!(
             "Component at idx {} is still running",
             node_idx.index()
@@ -197,8 +197,8 @@ pub async fn remove_connection(
             edge_idx.index()
         )))?;
 
-    if controller_lock.active_executions.contains_key(&node_source)
-        || controller_lock.active_executions.contains_key(&node_dest)
+    if controller_lock.executions.contains_key(&node_source)
+        || controller_lock.executions.contains_key(&node_dest)
     {
         return Err(EndpointError::BadRequest(
             "Connected node is still running".to_string(),

@@ -55,7 +55,6 @@ pub async fn start_component(
 /// This will fail if either:
 ///     The query parameter is not present or NaN
 ///     The component to stop is not running already
-/// Unlike start this request will block until the component is stopped
 pub async fn stop_component(
     controller: Arc<RwLock<CascadeController>>,
     request: Request<Body>,
@@ -66,6 +65,11 @@ pub async fn stop_component(
 
     let result: Result<ComponentMetadata, StopComponentError> =
         controller_lock.stop_component(node_idx).await;
+
+    // When the output queue is full up the thread is blocked on send
+    // This means it cannot cycle round to read the shutdown signal
+    // Could change it to check the queue length before scheduling another invocation
+    // Then also have something to increase the size of the queue on stoppage??
 
     match result {
         Ok(metadata) => {
@@ -87,4 +91,28 @@ pub async fn stop_component(
             node_idx.index()
         ))),
     }
+}
+
+/// Kill a component in the graph from an index query parameter
+/// This will fail if either:
+///     The query parameter is not present or NaN
+///     The component to stop is not running already
+/// This will not return until the components are killed
+pub async fn kill_component(
+    controller: Arc<RwLock<CascadeController>>,
+    request: Request<Body>,
+) -> EndpointResult {
+    let node_idx: NodeIndex = NodeIndex::new(get_idx_query_parameter(request)?);
+
+    let mut controller_lock: RwLockWriteGuard<CascadeController> = controller.write().await;
+
+    controller_lock.kill_component(node_idx).await;
+
+    let message: String = format!("Successfully sent kill signal to idx {}", node_idx.index());
+
+    info!("{}", message);
+
+    Ok(Response::builder()
+        .status(StatusCode::ACCEPTED)
+        .body(Body::from(message))?)
 }

@@ -34,7 +34,7 @@ impl Process for UpdateProperties {
     }
 
     async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
-        let mut item: Message = execution.recv().await?;
+        let mut item: Message = execution.recv().await?.clone();
 
         // Loop through updates and update FlowItem
         for (key, value) in self.updates.clone() {

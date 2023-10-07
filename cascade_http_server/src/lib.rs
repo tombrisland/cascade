@@ -4,12 +4,12 @@ use std::sync::Arc;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use hyper::service::{make_service_fn, service_fn};
 use log::info;
-use tokio::sync::{RwLock};
+use tokio::sync::RwLock;
 
 use cascade_core::controller::CascadeController;
 
 use crate::endpoint::{EndpointError, EndpointResult};
-use crate::endpoint::control::{start_component, stop_component};
+use crate::endpoint::control::{kill_component, start_component, stop_component};
 use crate::endpoint::graph::{
     create_component, create_connection, list_graph_connections, list_graph_nodes,
     remove_component, remove_connection,
@@ -48,6 +48,7 @@ async fn router(
         // Control of individual components
         (&Method::GET, "/start_component") => start_component(controller, req).await,
         (&Method::GET, "/stop_component") => stop_component(controller, req).await,
+        (&Method::GET, "/kill_component") => kill_component(controller, req).await,
 
         // List the current graph state
         (&Method::GET, "/list_nodes") => list_graph_nodes(controller, req).await,

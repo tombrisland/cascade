@@ -45,7 +45,7 @@ impl Process for LogMessage {
     }
 
     async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
-        let item: Message = execution.recv().await?;
+        let item: Message = execution.recv().await?.clone();
 
         // Increment item count and fetch the value
         let count: usize = self.item_count.fetch_add(1, Ordering::SeqCst);
