@@ -1,22 +1,21 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use async_channel::{Receiver, Sender, unbounded};
+use async_channel::{Receiver, Sender};
 use log::info;
-use petgraph::Direction;
 use petgraph::graph::{EdgeIndex, NodeIndex};
+use petgraph::Direction;
 use tokio::sync::{RwLock, RwLockWriteGuard};
-
-use cascade_api::component::component::{Component, ComponentMetadata, Schedule};
-use cascade_api::component::definition::ComponentDefinition;
-use cascade_api::connection::{ComponentChannels, Connection};
-use cascade_api::connection::definition::ConnectionDefinition;
-use cascade_api::message::InternalMessage;
 
 use crate::controller::error::{RemoveConnectionError, StartComponentError, StopComponentError};
 use crate::controller::execution::ComponentExecution;
 use crate::graph::CascadeGraph;
 use crate::registry::ComponentRegistry;
+use cascade_api::component::component::{Component, ComponentMetadata, Schedule};
+use cascade_api::component::definition::ComponentDefinition;
+use cascade_api::connection::definition::ConnectionDefinition;
+use cascade_api::connection::{ComponentChannels, Connection};
+use cascade_api::message::Message;
 
 pub mod error;
 mod execution;
@@ -91,19 +90,24 @@ impl CascadeController {
             // Error if there was no execution started
             .ok_or(StopComponentError::ComponentNotStarted(node_idx.index()))?;
 
-        execution
-            .stop()
-            .await
-            .map_err(|_| StopComponentError::FailedToStop)?;
+        execution.stop().await;
 
         Ok(execution.component.metadata.clone())
     }
 
-    pub async fn kill_component(&mut self, node_idx: NodeIndex) {
+    pub async fn kill_component(&mut self, node_idx: NodeIndex) -> Result<(), StopComponentError> {
         // Try and find a relevant execution
         if let Some(mut execution) = self.executions.remove(&node_idx) {
-            // Kill all associated threads
-            execution.kill().await;
+            if execution.is_stopped() {
+                // Kill all associated threads
+                execution.kill().await;
+
+                Ok(())
+            } else {
+                Err(StopComponentError::ComponentNotStopped)
+            }
+        } else {
+            Err(StopComponentError::ComponentNotStarted(node_idx.index()))
         }
     }
 
@@ -140,8 +144,8 @@ fn init_channels_for_node(
     node_idx: NodeIndex,
 ) -> ComponentChannels {
     // Receivers must be owned
-    let mut rx_channels: Vec<Receiver<InternalMessage>> = Default::default();
-    let mut tx_named: HashMap<String, Sender<InternalMessage>> = Default::default();
+    let mut rx_channels: Vec<Receiver<Message>> = Default::default();
+    let mut tx_named: HashMap<String, Sender<Message>> = Default::default();
 
     for (direction, idx) in graph.get_edges_for_node(node_idx) {
         let def: &ConnectionDefinition = graph.get_connection_for_edge(idx.clone()).unwrap();
@@ -160,14 +164,8 @@ fn init_channels_for_node(
         };
     }
 
-    // Create an extra channel to send signals to the components
-    let (tx_signal, rx_signal): (Sender<InternalMessage>, Receiver<InternalMessage>) = unbounded();
-
-    rx_channels.push(rx_signal);
-
     ComponentChannels {
         rx: rx_channels,
-        tx_signal,
         tx_named,
     }
 }

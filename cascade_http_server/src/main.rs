@@ -1,6 +1,5 @@
 // Required to call trait fns dynamically
 #![feature(fn_traits)]
-#![feature(async_fn_in_trait)]
 extern crate core;
 
 use std::sync::Arc;

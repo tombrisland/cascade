@@ -3,29 +3,31 @@ use std::collections::HashMap;
 use async_channel::{bounded, Receiver, Sender};
 
 use definition::ConnectionDefinition;
-
-use crate::message::InternalMessage;
+use crate::message::Message;
 
 pub mod definition;
 
 #[derive(Clone)]
 pub struct Connection {
     pub name: String,
-    pub max_items: usize,
+    pub capacity: usize,
 
-    pub rx: Receiver<InternalMessage>,
-    pub tx: Sender<InternalMessage>,
+    pub rx: Receiver<Message>,
+    pub tx: Sender<Message>,
 }
 
 impl Connection {
     pub fn new(def: &ConnectionDefinition) -> Connection {
-        let (tx, rx): (Sender<InternalMessage>, Receiver<InternalMessage>) = bounded(def.max_items);
+        let (tx, rx): (
+            Sender<Message>,
+            Receiver<Message>,
+        ) = bounded(def.capacity);
 
         Connection {
             name: def.name.clone(),
-            max_items: def.max_items,
+            capacity: def.capacity,
             rx,
-            tx
+            tx,
         }
     }
 }
@@ -33,10 +35,8 @@ impl Connection {
 #[derive(Clone)]
 pub struct ComponentChannels {
     // Incoming connections
-    pub rx: Vec<Receiver<InternalMessage>>,
-    // Sender to dispatch signals to the component
-    pub tx_signal: Sender<InternalMessage>,
+    pub rx: Vec<Receiver<Message>>,
 
     // Named output connections
-    pub tx_named: HashMap<String, Sender<InternalMessage>>,
+    pub tx_named: HashMap<String, Sender<Message>>,
 }

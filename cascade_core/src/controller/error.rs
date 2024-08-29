@@ -24,6 +24,7 @@ impl Display for StartComponentError {
 pub enum StopComponentError {
     ComponentNotStarted(usize),
     FailedToStop,
+    ComponentNotStopped,
 }
 
 impl Display for StopComponentError {
@@ -34,6 +35,9 @@ impl Display for StopComponentError {
             }
             StopComponentError::FailedToStop => {
                 f.write_str("Component failed to stop")
+            }
+            StopComponentError::ComponentNotStopped => {
+                f.write_str("Component must be stopped before trying to kill it")
             }
         }
     }

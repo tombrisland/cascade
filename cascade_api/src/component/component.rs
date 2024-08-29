@@ -21,12 +21,6 @@ pub enum Schedule {
         #[serde(default = "concurrency_default")]
         concurrency: u8,
     },
-    // Interval {
-    //     period_millis: u64,
-    //     // Max amount of tasks which can be started to maintain the period
-    //     #[serde(default = "concurrency_default")]
-    //     max_concurrency: u8,
-    // },
     Interval {
         period_millis: u64,
     },

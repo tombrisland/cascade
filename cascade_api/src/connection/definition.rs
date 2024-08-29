@@ -10,7 +10,7 @@ pub struct ConnectionDefinition {
     pub source: usize,
     pub target: usize,
 
-    pub max_items: usize,
+    pub capacity: usize,
 }
 
 fn id_default() -> String {
@@ -27,7 +27,7 @@ impl ConnectionDefinition {
             name: DEFAULT_CONNECTION.to_string(),
             source: from,
             target: to,
-            max_items: DEFAULT_MAX_ITEMS,
+            capacity: DEFAULT_MAX_ITEMS,
         }
     }
 }

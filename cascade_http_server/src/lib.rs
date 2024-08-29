@@ -1,14 +1,13 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use log::info;
 use tokio::sync::RwLock;
 
 use cascade_core::controller::CascadeController;
 
-use crate::endpoint::{EndpointError, EndpointResult};
 use crate::endpoint::control::{kill_component, start_component, stop_component};
 use crate::endpoint::graph::{
     create_component, create_connection, list_graph_connections, list_graph_nodes,
@@ -16,6 +15,7 @@ use crate::endpoint::graph::{
 };
 use crate::endpoint::metrics::stat_connection;
 use crate::endpoint::registry::list_available_components;
+use crate::endpoint::{EndpointError, EndpointResult};
 
 mod endpoint;
 
@@ -82,8 +82,6 @@ type ServerError = Box<dyn std::error::Error + Send + Sync>;
 
 impl CascadeServer {
     pub async fn start(self) -> Result<(), hyper::Error> {
-        info!("Starting server on {}", &self.addr);
-
         let service = make_service_fn(move |_| {
             let controller: Arc<RwLock<CascadeController>> = Arc::clone(&self.controller);
 

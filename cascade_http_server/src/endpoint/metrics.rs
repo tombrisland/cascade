@@ -13,7 +13,7 @@ use crate::endpoint::{create_json_body, EndpointError, EndpointResult, get_idx_q
 struct ConnectionMetric {
     name: String,
     count: usize,
-    max_items: usize,
+    capacity: usize,
 }
 
 /// Describe the connection state
@@ -36,7 +36,7 @@ pub async fn stat_connection(
         Some(connection) => Ok(create_json_body(&ConnectionMetric {
             name: connection.name.clone(),
             count: connection.tx.len(),
-            max_items: connection.max_items,
+            capacity: connection.tx.capacity().unwrap(),
         })?),
     }
 }

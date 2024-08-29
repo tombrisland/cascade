@@ -8,12 +8,6 @@ use crate::message::content::Content;
 
 pub mod content;
 
-/// Wraps message to pass signals to the component runtime
-pub enum InternalMessage {
-    ShutdownSignal,
-    Item(Message),
-}
-
 /// Message passed to components
 #[derive(Debug, Clone)]
 pub struct Message {
