@@ -6,10 +6,10 @@ use petgraph::graph::NodeIndex;
 use tokio::sync::{RwLock, RwLockWriteGuard};
 
 use cascade_api::component::component::ComponentMetadata;
-use cascade_core::controller::CascadeController;
 use cascade_core::controller::error::{StartComponentError, StopComponentError};
+use cascade_core::controller::CascadeController;
 
-use crate::endpoint::{EndpointError, EndpointResult, get_idx_query_parameter};
+use crate::endpoint::{get_idx_query_parameter, EndpointError, EndpointResult};
 
 /// Start a component in the graph from an index query parameter
 /// This will fail if either:
@@ -66,11 +66,6 @@ pub async fn stop_component(
     let result: Result<ComponentMetadata, StopComponentError> =
         controller_lock.stop_component(node_idx).await;
 
-    // When the output queue is full up the thread is blocked on send
-    // This means it cannot cycle round to read the shutdown signal
-    // Could change it to check the queue length before scheduling another invocation
-    // Then also have something to increase the size of the queue on stoppage??
-
     match result {
         Ok(metadata) => {
             let message: String = format!(
@@ -106,13 +101,21 @@ pub async fn kill_component(
 
     let mut controller_lock: RwLockWriteGuard<CascadeController> = controller.write().await;
 
-    controller_lock.kill_component(node_idx).await;
+    match controller_lock.kill_component(node_idx).await {
+        Ok(_) => {
+            let message: String =
+                format!("Successfully sent kill signal to idx {}", node_idx.index());
 
-    let message: String = format!("Successfully sent kill signal to idx {}", node_idx.index());
+            info!("{}", message);
 
-    info!("{}", message);
-
-    Ok(Response::builder()
-        .status(StatusCode::ACCEPTED)
-        .body(Body::from(message))?)
+            Ok(Response::builder()
+                .status(StatusCode::ACCEPTED)
+                .body(Body::from(message))?)
+        }
+        Err(err) => Err(EndpointError::BadRequest(format!(
+            "Encountered {:?} when killing idx {}",
+            err,
+            node_idx.index()
+        ))),
+    }
 }
