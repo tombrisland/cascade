@@ -1,7 +1,7 @@
 use log::error;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::task::{JoinSet};
+use tokio::task::JoinSet;
 use tokio::time::MissedTickBehavior::Delay;
 use tokio::time::{interval, Interval};
 
@@ -77,7 +77,7 @@ impl ComponentExecution {
     pub fn is_stopped(&self) -> bool {
         match self.stop_component {
             None => true,
-            Some(_) => false
+            Some(_) => false,
         }
     }
 
@@ -107,9 +107,11 @@ impl ComponentExecution {
                 }
 
                 if let Err(err) = implementation.process(&mut environment).await {
+                    // Rollback the session to the input queue
+                    environment.rollback().await.unwrap();
+
                     match err {
                         ComponentError::ComponentShutdown => {
-                            // TODO re-queue items in this case
                             // Break loop and join task
                             break;
                         }

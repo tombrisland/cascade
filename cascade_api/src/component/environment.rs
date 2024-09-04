@@ -3,6 +3,7 @@ use crate::component::error::ComponentError;
 use crate::connection::definition::DEFAULT_CONNECTION;
 use crate::connection::{ComponentChannels, Connection};
 use crate::message::Message;
+use async_channel::SendError;
 use futures::future::{select, Either};
 use futures::stream::{select_all, SelectAll};
 use futures::StreamExt;
@@ -108,9 +109,6 @@ impl ExecutionEnvironment {
                     .await
                     .or(Err(ComponentError::OutputClosed))?;
 
-                // Remove the item from in-progress
-                self.in_progress.take();
-
                 Ok(())
             }
             None => {
@@ -127,5 +125,23 @@ impl ExecutionEnvironment {
     // Send to the default connection
     pub async fn send_default(&mut self, item: Message) -> Result<(), ComponentError> {
         self.send(DEFAULT_CONNECTION, item).await
+    }
+
+    pub async fn complete(&mut self) {
+        self.in_progress.take();
+    }
+
+    /// Return the in-flight item to it's original queue
+    pub async fn rollback(&mut self) -> Result<(), SendError<Message>> {
+        if let Some((conn_id, message)) = self.in_progress.take() {
+            let option: Option<&Connection> =
+                self.rx.select_all.iter().find(|conn| conn.id == conn_id);
+
+            if let Some(conn) = option {
+                conn.send(message).await?
+            }
+        }
+
+        Ok(())
     }
 }

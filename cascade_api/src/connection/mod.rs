@@ -11,6 +11,7 @@ pub mod definition;
 
 #[derive(Clone)]
 pub struct Connection {
+    pub id: String,
     pub name: String,
     pub capacity: usize,
 
@@ -23,6 +24,7 @@ impl Connection {
         let (tx, rx): (Sender<Message>, Receiver<Message>) = bounded(def.capacity);
 
         Connection {
+            id: def.id.clone(),
             name: def.name.clone(),
             capacity: def.capacity,
             rx,
