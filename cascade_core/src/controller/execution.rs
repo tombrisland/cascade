@@ -82,6 +82,7 @@ impl ComponentExecution {
     }
 
     pub async fn kill(&mut self) {
+        // TODO this should rollback all sessions before attempting kill
         if self.tasks.len() > 0 {
             self.tasks.shutdown().await
         }

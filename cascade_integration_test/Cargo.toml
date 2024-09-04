@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.39.3", features = ["rt-multi-thread", "macros"] }
 
 cascade_core = { path = "../cascade_core" }
 cascade_api = { path = "../cascade_api" }
