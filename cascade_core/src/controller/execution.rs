@@ -6,7 +6,7 @@ use tokio::time::MissedTickBehavior::Delay;
 use tokio::time::{interval, Interval};
 
 use cascade_api::component::component::{Component, ComponentMetadata, Schedule};
-use cascade_api::component::environment::{ExecutionEnvironment, StopComponent};
+use cascade_api::component::environment::{ExecutionEnvironment, ShutdownNotification};
 use cascade_api::component::error::ComponentError;
 use cascade_api::component::Process;
 use cascade_api::connection::ComponentChannels;
@@ -17,7 +17,7 @@ pub struct ComponentExecution {
 
     pub component: Arc<Component>,
 
-    pub stop_component: Option<Arc<StopComponent>>,
+    pub stop_component: Option<Arc<ShutdownNotification>>,
     channels: ComponentChannels,
 }
 
@@ -33,7 +33,7 @@ impl ComponentExecution {
 
     pub fn start(&mut self) {
         let metadata: ComponentMetadata = self.component.metadata.clone();
-        let shutdown: Arc<StopComponent> = Default::default();
+        let shutdown: Arc<ShutdownNotification> = Default::default();
 
         // Store shutdown state before we start the component properly
         let _ = self.stop_component.insert(shutdown.clone());
@@ -92,7 +92,7 @@ impl ComponentExecution {
         mut environment: ExecutionEnvironment,
         mut interval: Option<Interval>,
     ) {
-        let shutdown: Arc<StopComponent> = self.stop_component.clone().unwrap();
+        let shutdown: Arc<ShutdownNotification> = self.stop_component.clone().unwrap();
         let implementation: Arc<dyn Process> = self.component.implementation.clone();
 
         self.tasks.spawn(async move {
@@ -109,7 +109,7 @@ impl ComponentExecution {
                 if let Err(err) = implementation.process(&mut environment).await {
                     match err {
                         ComponentError::ComponentShutdown => {
-                            // TODO re-queue item in this case
+                            // TODO re-queue items in this case
                             // Break loop and join task
                             break;
                         }

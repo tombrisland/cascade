@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use async_channel::{Receiver, Sender};
 use log::info;
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use petgraph::Direction;
@@ -15,7 +14,6 @@ use cascade_api::component::component::{Component, ComponentMetadata, Schedule};
 use cascade_api::component::definition::ComponentDefinition;
 use cascade_api::connection::definition::ConnectionDefinition;
 use cascade_api::connection::{ComponentChannels, Connection};
-use cascade_api::message::Message;
 
 pub mod error;
 mod execution;
@@ -144,8 +142,8 @@ fn init_channels_for_node(
     node_idx: NodeIndex,
 ) -> ComponentChannels {
     // Receivers must be owned
-    let mut rx_channels: Vec<Receiver<Message>> = Default::default();
-    let mut tx_named: HashMap<String, Sender<Message>> = Default::default();
+    let mut rx_channels: Vec<Connection> = Default::default();
+    let mut tx_named: HashMap<String, Connection> = Default::default();
 
     for (direction, idx) in graph.get_edges_for_node(node_idx) {
         let def: &ConnectionDefinition = graph.get_connection_for_edge(idx.clone()).unwrap();
@@ -158,9 +156,9 @@ fn init_channels_for_node(
         match direction {
             // Include entry in the map by name
             Direction::Outgoing => {
-                tx_named.insert(connection.name.clone(), connection.tx.clone());
+                tx_named.insert(connection.name.clone(), connection.clone());
             }
-            Direction::Incoming => rx_channels.push(connection.rx.clone()),
+            Direction::Incoming => rx_channels.push(connection.clone()),
         };
     }
 

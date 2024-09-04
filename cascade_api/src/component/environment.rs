@@ -1,9 +1,8 @@
 use crate::component::component::ComponentMetadata;
 use crate::component::error::ComponentError;
 use crate::connection::definition::DEFAULT_CONNECTION;
-use crate::connection::ComponentChannels;
+use crate::connection::{ComponentChannels, Connection};
 use crate::message::Message;
-use async_channel::{Receiver, Sender};
 use futures::future::{select, Either};
 use futures::stream::{select_all, SelectAll};
 use futures::StreamExt;
@@ -16,29 +15,29 @@ use tokio::sync::Notify;
 
 /// Wraps async-channel receivers to create a fused stream
 /// Multiple input streams can then be read from the same stream
-pub struct FusedStream<Message> {
-    select_all: SelectAll<Receiver<Message>>,
+pub struct FusedConnections {
+    select_all: SelectAll<Connection>,
 }
 
-impl<Message> FusedStream<Message> {
-    pub fn new(receivers: Vec<Receiver<Message>>) -> FusedStream<Message> {
-        FusedStream {
+impl FusedConnections {
+    pub fn new(receivers: Vec<Connection>) -> FusedConnections {
+        FusedConnections {
             select_all: select_all(receivers),
         }
     }
 
-    pub(crate) async fn recv(&mut self) -> Option<Message> {
+    pub(crate) async fn recv(&mut self) -> Option<(String, Message)> {
         self.select_all.next().await
     }
 }
 
 #[derive(Default)]
-pub struct StopComponent {
+pub struct ShutdownNotification {
     is_shutdown: AtomicBool,
     notify: Notify,
 }
 
-impl StopComponent {
+impl ShutdownNotification {
     pub fn stop(&self, task_count: usize) {
         self.is_shutdown.store(true, Ordering::Relaxed);
 
@@ -47,7 +46,7 @@ impl StopComponent {
         }
     }
 
-    pub fn wait(&self) -> Notified {
+    pub fn notified(&self) -> Notified {
         self.notify.notified()
     }
 
@@ -62,24 +61,25 @@ pub struct ExecutionEnvironment {
     // Connections which can be ignored if they don't exist
     ignore_connections: Vec<String>,
 
-    in_progress: Option<Message>,
+    // The message in process combined with the connection it came from
+    in_progress: Option<(String, Message)>,
 
-    rx: FusedStream<Message>,
-    pub shutdown: Arc<StopComponent>,
-    tx_named: HashMap<String, Sender<Message>>,
+    rx: FusedConnections,
+    pub(crate) shutdown: Arc<ShutdownNotification>,
+    tx_named: HashMap<String, Connection>,
 }
 
 impl ExecutionEnvironment {
     pub fn new(
         metadata: ComponentMetadata,
         channels: ComponentChannels,
-        shutdown: Arc<StopComponent>,
+        shutdown: Arc<ShutdownNotification>,
     ) -> ExecutionEnvironment {
         ExecutionEnvironment {
             metadata,
             ignore_connections: vec![DEFAULT_CONNECTION.to_string()],
             in_progress: None,
-            rx: FusedStream::new(channels.rx),
+            rx: FusedConnections::new(channels.rx),
             shutdown,
             tx_named: channels.tx_named,
         }
@@ -87,10 +87,15 @@ impl ExecutionEnvironment {
 
     // Get a single item from the session
     pub async fn recv(&mut self) -> Result<&Message, ComponentError> {
-        match select(pin!(self.rx.recv()), pin!(self.shutdown.wait())).await {
-            Either::Left((message, _)) => Ok(self
-                .in_progress
-                .insert(message.ok_or(ComponentError::InputClosed)?)),
+        match select(pin!(self.rx.recv()), pin!(self.shutdown.notified())).await {
+            Either::Left((message, _)) => {
+                // Store item in progress in this session
+                let (_, message): &mut (String, Message) = self
+                    .in_progress
+                    .insert(message.ok_or(ComponentError::InputClosed)?);
+
+                Ok(message)
+            }
             Either::Right(_) => Err(ComponentError::ComponentShutdown),
         }
     }
