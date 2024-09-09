@@ -1,42 +1,79 @@
-use log::error;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::task::JoinSet;
-use tokio::time::MissedTickBehavior::Delay;
-use tokio::time::{interval, Interval};
-
 use cascade_api::component::component::{Component, ComponentMetadata, Schedule};
-use cascade_api::component::environment::{ExecutionEnvironment, ShutdownNotification};
+use cascade_api::component::environment::ExecutionEnvironment;
 use cascade_api::component::error::ComponentError;
 use cascade_api::component::Process;
 use cascade_api::connection::ComponentChannels;
+use log::error;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::{Mutex, MutexGuard};
+use tokio::task;
+use tokio::task::{JoinHandle, JoinSet};
+use tokio::time::MissedTickBehavior::Delay;
+use tokio::time::{interval, Interval};
+use tokio_util::sync::CancellationToken;
+
+#[derive(Default)]
+pub struct ComponentShutdown {
+    token: CancellationToken,
+    tasks: Option<Arc<Mutex<JoinSet<()>>>>,
+
+    join_handle: Option<JoinHandle<()>>,
+}
+
+impl ComponentShutdown {
+    /// Attempt to gracefully join tasks
+    pub fn stop(&mut self, tasks: JoinSet<()>) {
+        // Signal tasks to stop
+        self.token.cancel();
+        self.tasks = Some(Arc::new(Mutex::new(tasks)));
+
+        let tasks: Option<Arc<Mutex<JoinSet<()>>>> = self.tasks.clone();
+
+        // Try and join all active tasks
+        let _ = self.join_handle.insert(task::spawn(async move {
+            if let Some(tasks) = tasks {
+                let mut guard: MutexGuard<JoinSet<()>> = tasks.lock().await;
+
+                while !guard.is_empty() {
+                    // TODO handle errors in some way - at least log them
+                    guard.join_next().await;
+                }
+            }
+        }));
+    }
+
+    /// Shutdown all associated tasks
+    pub async fn kill(&mut self) {
+        if let Some(tasks) = &self.tasks {
+            let mut guard: MutexGuard<JoinSet<()>> = tasks.lock().await;
+
+            guard.shutdown().await;
+        }
+    }
+}
 
 pub struct ComponentExecution {
-    // Active task for this execution
-    tasks: JoinSet<()>,
-
     pub component: Arc<Component>,
-
-    pub stop_component: Option<Arc<ShutdownNotification>>,
     channels: ComponentChannels,
+
+    // Active tasks for this execution
+    tasks: Option<JoinSet<()>>,
+    shutdown: ComponentShutdown,
 }
 
 impl ComponentExecution {
     pub fn new(component: Component, channels: ComponentChannels) -> ComponentExecution {
         ComponentExecution {
-            tasks: JoinSet::new(),
+            tasks: Some(JoinSet::new()),
             component: Arc::new(component),
-            stop_component: None,
             channels,
+            shutdown: Default::default(),
         }
     }
 
     pub fn start(&mut self) {
         let metadata: ComponentMetadata = self.component.metadata.clone();
-        let shutdown: Arc<ShutdownNotification> = Default::default();
-
-        // Store shutdown state before we start the component properly
-        let _ = self.stop_component.insert(shutdown.clone());
 
         match self.component.schedule {
             // Allow the component to manage its own scheduling
@@ -45,7 +82,7 @@ impl ComponentExecution {
                     let environment: ExecutionEnvironment = ExecutionEnvironment::new(
                         metadata.clone(),
                         self.channels.clone(),
-                        shutdown.clone(),
+                        self.shutdown.token.clone(),
                     );
 
                     self.schedule_component(environment, None);
@@ -60,7 +97,7 @@ impl ComponentExecution {
                 let environment: ExecutionEnvironment = ExecutionEnvironment::new(
                     metadata.clone(),
                     self.channels.clone(),
-                    shutdown.clone(),
+                    self.shutdown.token.clone(),
                 );
 
                 self.schedule_component(environment, Some(interval));
@@ -69,22 +106,27 @@ impl ComponentExecution {
     }
 
     pub async fn stop(&mut self) {
-        if let Some(stop_component) = &self.stop_component {
-            stop_component.stop(self.tasks.len())
+        if let Some(tasks) = self.tasks.take() {
+            self.shutdown.stop(tasks);
         }
     }
 
     pub fn is_stopped(&self) -> bool {
-        match self.stop_component {
-            None => true,
-            Some(_) => false,
-        }
+        self.shutdown.token.is_cancelled()
     }
 
     pub async fn kill(&mut self) {
         // TODO this should rollback all sessions before attempting kill
-        if self.tasks.len() > 0 {
-            self.tasks.shutdown().await
+        if self.shutdown.token.is_cancelled() && !self.tasks.is_none() {
+            self.shutdown.kill().await;
+        }
+    }
+
+    pub fn active_tasks(&self) -> usize {
+        if let Some(tasks) = &self.tasks {
+            tasks.len()
+        } else {
+            0
         }
     }
 
@@ -93,17 +135,18 @@ impl ComponentExecution {
         mut environment: ExecutionEnvironment,
         mut interval: Option<Interval>,
     ) {
-        let shutdown: Arc<ShutdownNotification> = self.stop_component.clone().unwrap();
         let implementation: Arc<dyn Process> = self.component.implementation.clone();
+        let tasks: &mut JoinSet<()> = self.tasks.get_or_insert(JoinSet::new());
 
-        self.tasks.spawn(async move {
+        tasks.spawn(async move {
             loop {
                 if let Some(interval) = interval.as_mut() {
                     interval.tick().await;
                 }
 
-                // Ensure that producers are shutdown properly
-                if shutdown.is_stopped() {
+                // Ensure any component which polls again is shutdown
+                if environment.shutdown_token.is_cancelled() {
+                    // Break loop and join task
                     break;
                 }
 

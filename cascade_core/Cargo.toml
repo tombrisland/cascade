@@ -8,6 +8,7 @@ petgraph = "0.6.4"
 log = "0.4.20"
 
 tokio = { version = "1.39.3", features = ["time", "sync"] }
+tokio-util = { version = "0.7.12", features = ["default"] }
 async-channel = "1.9.0"
 
 serde = { version = "1.0.188", features = ["derive"] }

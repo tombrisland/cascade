@@ -9,10 +9,7 @@ use futures::stream::{select_all, SelectAll};
 use futures::StreamExt;
 use std::collections::HashMap;
 use std::pin::pin;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use tokio::sync::futures::Notified;
-use tokio::sync::Notify;
+use tokio_util::sync::CancellationToken;
 
 /// Wraps async-channel receivers to create a fused stream
 /// Multiple input streams can then be read from the same stream
@@ -32,30 +29,6 @@ impl FusedConnections {
     }
 }
 
-#[derive(Default)]
-pub struct ShutdownNotification {
-    is_shutdown: AtomicBool,
-    notify: Notify,
-}
-
-impl ShutdownNotification {
-    pub fn stop(&self, task_count: usize) {
-        self.is_shutdown.store(true, Ordering::Relaxed);
-
-        for _ in 0..task_count {
-            self.notify.notify_one();
-        }
-    }
-
-    pub fn notified(&self) -> Notified {
-        self.notify.notified()
-    }
-
-    pub fn is_stopped(&self) -> bool {
-        self.is_shutdown.load(Ordering::Relaxed)
-    }
-}
-
 pub struct ExecutionEnvironment {
     pub metadata: ComponentMetadata,
 
@@ -66,7 +39,7 @@ pub struct ExecutionEnvironment {
     in_progress: Option<(String, Message)>,
 
     rx: FusedConnections,
-    pub(crate) shutdown: Arc<ShutdownNotification>,
+    pub shutdown_token: CancellationToken,
     tx_named: HashMap<String, Connection>,
 }
 
@@ -74,21 +47,22 @@ impl ExecutionEnvironment {
     pub fn new(
         metadata: ComponentMetadata,
         channels: ComponentChannels,
-        shutdown: Arc<ShutdownNotification>,
+        shutdown_token: CancellationToken,
     ) -> ExecutionEnvironment {
         ExecutionEnvironment {
             metadata,
             ignore_connections: vec![DEFAULT_CONNECTION.to_string()],
             in_progress: None,
             rx: FusedConnections::new(channels.rx),
-            shutdown,
+            shutdown_token,
             tx_named: channels.tx_named,
         }
     }
 
     // Get a single item from the session
     pub async fn recv(&mut self) -> Result<&Message, ComponentError> {
-        match select(pin!(self.rx.recv()), pin!(self.shutdown.notified())).await {
+        // TODO probably want to bias to shutdown path
+        match select(pin!(self.rx.recv()), pin!(self.shutdown_token.cancelled())).await {
             Either::Left((message, _)) => {
                 // Store item in progress in this session
                 let (_, message): &mut (String, Message) = self

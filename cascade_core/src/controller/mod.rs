@@ -96,6 +96,7 @@ impl CascadeController {
     pub async fn kill_component(&mut self, node_idx: NodeIndex) -> Result<(), StopComponentError> {
         // Try and find a relevant execution
         if let Some(mut execution) = self.executions.remove(&node_idx) {
+            // TODO check actually is stopped - has it rolled back?
             if execution.is_stopped() {
                 // Kill all associated threads
                 execution.kill().await;

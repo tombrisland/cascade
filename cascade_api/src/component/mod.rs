@@ -9,7 +9,6 @@ pub mod component;
 pub mod definition;
 pub mod environment;
 pub mod error;
-mod session;
 
 /// Implemented by all components to statically define type name
 pub trait NamedComponent {

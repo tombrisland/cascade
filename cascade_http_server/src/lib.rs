@@ -13,7 +13,7 @@ use crate::endpoint::graph::{
     create_component, create_connection, list_graph_connections, list_graph_nodes,
     remove_component, remove_connection,
 };
-use crate::endpoint::metrics::stat_connection;
+use crate::endpoint::metrics::{stat_component, stat_connection};
 use crate::endpoint::registry::list_available_components;
 use crate::endpoint::{EndpointError, EndpointResult};
 
@@ -53,6 +53,8 @@ async fn router(
         // List the current graph state
         (&Method::GET, "/list_nodes") => list_graph_nodes(controller, req).await,
         (&Method::GET, "/list_connections") => list_graph_connections(controller, req).await,
+
+        (&Method::GET, "/stat_component") => stat_component(controller, req).await,
         (&Method::GET, "/stat_connection") => stat_connection(controller, req).await,
         // Return 404 not found response.
         _ => Ok(Response::builder()
@@ -68,6 +70,10 @@ async fn router(
             EndpointError::HyperError(err) => Err(err),
             EndpointError::BadRequest(err) => Ok(Response::builder()
                 .status(StatusCode::BAD_REQUEST)
+                .body(Body::from(err.to_string()))
+                .unwrap()),
+            EndpointError::NotFound(err) => Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
                 .body(Body::from(err.to_string()))
                 .unwrap()),
             EndpointError::InternalServerError(err) => Ok(Response::builder()

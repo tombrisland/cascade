@@ -15,6 +15,7 @@ pub(crate) mod metrics;
 pub enum EndpointError {
     HyperError(hyper::Error),
     BadRequest(String),
+    NotFound(String),
     InternalServerError(String),
 }
 
