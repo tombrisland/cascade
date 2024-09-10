@@ -4,14 +4,13 @@ use crate::connection::definition::DEFAULT_CONNECTION;
 use crate::connection::{ComponentChannels, Connection};
 use crate::message::Message;
 use async_channel::SendError;
-use futures::future::{select, Either};
 use futures::stream::{select_all, SelectAll};
 use futures::StreamExt;
 use std::collections::HashMap;
-use std::pin::pin;
 use tokio_util::sync::CancellationToken;
 
 /// Wraps async-channel receivers to create a fused stream
+///
 /// Multiple input streams can then be read from the same stream
 pub struct FusedConnections {
     select_all: SelectAll<Connection>,
@@ -61,18 +60,21 @@ impl ExecutionEnvironment {
 
     // Get a single item from the session
     pub async fn recv(&mut self) -> Result<&Message, ComponentError> {
-        // TODO probably want to bias to shutdown path
-        match select(pin!(self.rx.recv()), pin!(self.shutdown_token.cancelled())).await {
-            Either::Left((message, _)) => {
-                // Store item in progress in this session
-                let (_, message): &mut (String, Message) = self
-                    .in_progress
-                    .insert(message.ok_or(ComponentError::InputClosed)?);
+        let next: Result<Option<(String, Message)>, ComponentError> = tokio::select! {
+            // Ensure we always check shutdown token first
+            biased;
 
-                Ok(message)
-            }
-            Either::Right(_) => Err(ComponentError::ComponentShutdown),
-        }
+            _ = self.shutdown_token.cancelled() => { Err(ComponentError::ComponentShutdown) },
+            message = self.rx.recv() => { Ok(message) }
+        };
+
+        // Store item in progress in this session
+        let (_, message): &mut (String, Message) = self
+            .in_progress
+            // The stream returns None when all inputs are closed
+            .insert(next?.ok_or(ComponentError::InputClosed)?);
+
+        Ok(message)
     }
 
     pub async fn send(&mut self, name: &str, item: Message) -> Result<(), ComponentError> {
@@ -99,10 +101,6 @@ impl ExecutionEnvironment {
     // Send to the default connection
     pub async fn send_default(&mut self, item: Message) -> Result<(), ComponentError> {
         self.send(DEFAULT_CONNECTION, item).await
-    }
-
-    pub async fn complete(&mut self) {
-        self.in_progress.take();
     }
 
     /// Return the in-flight item to its original queue
