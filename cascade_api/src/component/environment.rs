@@ -105,11 +105,14 @@ impl ExecutionEnvironment {
         self.in_progress.take();
     }
 
-    /// Return the in-flight item to it's original queue
+    /// Return the in-flight item to its original queue
     pub async fn rollback(&mut self) -> Result<(), SendError<Message>> {
         if let Some((conn_id, message)) = self.in_progress.take() {
-            let option: Option<&Connection> =
-                self.rx.select_all.iter().find(|conn| conn.id == conn_id);
+            let option: Option<&Connection> = self
+                .rx
+                .select_all
+                .iter()
+                .find(|conn| conn.metadata.id == conn_id);
 
             if let Some(conn) = option {
                 conn.send(message).await?

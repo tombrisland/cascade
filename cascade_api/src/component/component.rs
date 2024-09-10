@@ -1,10 +1,10 @@
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
-use nanoid::nanoid;
-use serde::{Deserialize, Serialize};
 use crate::component::definition::{ComponentDefinition, ComponentType};
 use crate::component::{NamedComponent, Process};
+use nanoid::nanoid;
+use serde::{Deserialize, Serialize};
 
 pub struct Component {
     pub metadata: ComponentMetadata,
@@ -30,7 +30,7 @@ fn concurrency_default() -> u8 {
     1
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct ComponentMetadata {
     pub id: String,
 

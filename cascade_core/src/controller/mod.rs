@@ -157,7 +157,7 @@ fn init_channels_for_node(
         match direction {
             // Include entry in the map by name
             Direction::Outgoing => {
-                tx_named.insert(connection.name.clone(), connection.clone());
+                tx_named.insert(connection.metadata.name.clone(), connection.clone());
             }
             Direction::Incoming => rx_channels.push(connection.clone()),
         };

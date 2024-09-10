@@ -1,20 +1,18 @@
 use std::sync::Arc;
 
+use crate::endpoint::{create_json_body, get_idx_query_parameter, EndpointError, EndpointResult};
+use cascade_api::component::component::ComponentMetadata;
+use cascade_api::connection::ConnectionMetadata;
+use cascade_core::controller::{CascadeController, ConnectionsMap};
 use hyper::{Body, Request};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use serde::Serialize;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
-use cascade_core::controller::{CascadeController, ConnectionsMap};
-use cascade_core::graph::CascadeGraph;
-use crate::endpoint::{create_json_body, get_idx_query_parameter, EndpointError, EndpointResult};
-
 #[derive(Serialize)]
 struct ConnectionMetric {
-    idx: usize,
-    name: String,
+    metadata: ConnectionMetadata,
     count: usize,
-    capacity: usize,
 }
 
 /// Describe the connection state
@@ -35,18 +33,15 @@ pub async fn stat_connection(
             edge_idx.index()
         ))),
         Some(connection) => Ok(create_json_body(&ConnectionMetric {
-            idx: edge_idx.index(),
-            name: connection.name.clone(),
+            metadata: connection.metadata.clone(),
             count: connection.tx.len(),
-            capacity: connection.tx.capacity().unwrap(),
         })?),
     }
 }
 
 #[derive(Serialize)]
 struct ComponentMetric {
-    idx: usize,
-    name: String,
+    metadata: ComponentMetadata,
     active_tasks: usize,
 }
 
@@ -59,18 +54,13 @@ pub async fn stat_component(
 
     let controller_lock: RwLockReadGuard<CascadeController> = controller.read().await;
 
-    if let Some(execution) = controller_lock.executions.get(&node_idx) {
-
-    }
-
     match controller_lock.executions.get(&node_idx) {
         None => Err(EndpointError::NotFound(format!(
             "No active execution found at idx {}",
             node_idx.index()
         ))),
         Some(execution) => Ok(create_json_body(&ComponentMetric {
-            idx: node_idx.index(),
-            name: execution.component.metadata.display_name.clone(),
+            metadata: execution.component.metadata.clone(),
             active_tasks: execution.active_tasks(),
         })?),
     }

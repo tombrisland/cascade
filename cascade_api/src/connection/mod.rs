@@ -1,19 +1,25 @@
 use crate::message::Message;
 use async_channel::{bounded, Receiver, Sender};
 use definition::ConnectionDefinition;
+use futures::StreamExt;
 use futures_core::Stream;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use futures::StreamExt;
 
 pub mod definition;
 
-#[derive(Clone)]
-pub struct Connection {
+#[derive(Clone, Serialize)]
+pub struct ConnectionMetadata {
     pub id: String,
     pub name: String,
     pub capacity: usize,
+}
+
+#[derive(Clone)]
+pub struct Connection {
+    pub metadata: ConnectionMetadata,
 
     pub rx: Receiver<Message>,
     pub tx: Sender<Message>,
@@ -24,9 +30,11 @@ impl Connection {
         let (tx, rx): (Sender<Message>, Receiver<Message>) = bounded(def.capacity);
 
         Connection {
-            id: def.id.clone(),
-            name: def.name.clone(),
-            capacity: def.capacity,
+            metadata: ConnectionMetadata {
+                id: def.id.clone(),
+                name: def.name.clone(),
+                capacity: def.capacity,
+            },
             rx,
             tx,
         }
@@ -44,7 +52,7 @@ impl Stream for Connection {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.rx
             .poll_next_unpin(cx)
-            .map(|opt| opt.map(|msg| (self.name.clone(), msg)))
+            .map(|opt| opt.map(|msg| (self.metadata.name.clone(), msg)))
     }
 }
 
