@@ -75,6 +75,8 @@ impl ComponentExecution {
     pub fn start(&mut self) {
         let metadata: ComponentMetadata = self.component.metadata.clone();
 
+        // TODO throw if we try and start without expected configured channels
+
         match self.component.schedule {
             // Allow the component to manage its own scheduling
             Schedule::Unbounded { concurrency } => {
@@ -122,12 +124,10 @@ impl ComponentExecution {
         }
     }
 
-    pub fn active_tasks(&self) -> usize {
-        if let Some(tasks) = &self.tasks {
-            tasks.len()
-        } else {
-            0
-        }
+    pub fn active_tasks(&self) -> Option<usize> {
+        let active_tasks: &usize = &self.tasks.as_ref()?.len();
+
+        Some(active_tasks.clone())
     }
 
     fn schedule_component(
@@ -144,7 +144,15 @@ impl ComponentExecution {
                     interval.tick().await;
                 }
 
-                // Ensure any component which polls again is shutdown
+                // TODO this should cause the execution to backoff - we need a separate interval for this
+                // TODO actually maybe we could get a task to listen on the recv from the queue that matters
+
+                // TODO should also move to a single receiver - multiple processor model - avoiding more spinning threads
+                if !environment.tx_has_capacity() {
+                    continue;
+                }
+
+                // Cancel execution if this component is stopped
                 if environment.shutdown_token.is_cancelled() {
                     // Break loop and join task
                     break;

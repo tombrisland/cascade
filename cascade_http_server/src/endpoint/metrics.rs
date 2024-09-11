@@ -42,7 +42,7 @@ pub async fn stat_connection(
 #[derive(Serialize)]
 struct ComponentMetric {
     metadata: ComponentMetadata,
-    active_tasks: usize,
+    active_tasks: Option<usize>,
 }
 
 /// Describe the component state

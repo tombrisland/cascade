@@ -1,5 +1,5 @@
 use crate::message::Message;
-use async_channel::{bounded, Receiver, Sender};
+use async_channel::{unbounded, Receiver, Sender};
 use definition::ConnectionDefinition;
 use futures::StreamExt;
 use futures_core::Stream;
@@ -27,7 +27,7 @@ pub struct Connection {
 
 impl Connection {
     pub fn new(def: &ConnectionDefinition) -> Connection {
-        let (tx, rx): (Sender<Message>, Receiver<Message>) = bounded(def.capacity);
+        let (tx, rx): (Sender<Message>, Receiver<Message>) = unbounded();
 
         Connection {
             metadata: ConnectionMetadata {

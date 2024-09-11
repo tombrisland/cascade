@@ -9,6 +9,7 @@ use tokio::sync::RwLock;
 
 use cascade_api::component::{NamedComponent, Process};
 use cascade_component_std::generate_item::GenerateItem;
+use cascade_component_std::get_file::GetFile;
 use cascade_component_std::log_message::LogMessage;
 use cascade_component_std::update_properties::UpdateProperties;
 use cascade_core::controller::CascadeController;
@@ -30,6 +31,7 @@ async fn main() -> Result<(), hyper::Error> {
     let mut components: ComponentMap = Default::default();
 
     components.insert(GenerateItem::type_name(), GenerateItem::create_from_json);
+    components.insert(GetFile::type_name(), GetFile::create_from_json);
     components.insert(LogMessage::type_name(), LogMessage::create_from_json);
     components.insert(
         UpdateProperties::type_name(),

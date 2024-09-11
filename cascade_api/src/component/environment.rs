@@ -77,6 +77,13 @@ impl ExecutionEnvironment {
         Ok(message)
     }
 
+    /// Ensure all output channels have capacity
+    pub fn tx_has_capacity(&self) -> bool {
+        self.tx_named
+            .iter()
+            .all(|(_, conn)| conn.tx.len() < conn.metadata.capacity)
+    }
+
     pub async fn send(&mut self, name: &str, item: Message) -> Result<(), ComponentError> {
         match self.tx_named.get(name) {
             Some(connection) => {
