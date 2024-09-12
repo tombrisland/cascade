@@ -8,10 +8,4 @@ nanoid = "0.4.0"
 
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = { version = "1.0.107" }
-
 async-trait = "0.1.73"
-async-channel = "1.9.0"
-futures = "0.3.30"
-tokio = { version = "1.39.3", features = ["sync"] }
-tokio-util = { version = "0.7.12", features = ["default"] }
-futures-core = "0.3.28"

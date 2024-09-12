@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use serde_json::Value;
-use crate::component::environment::ExecutionEnvironment;
+use crate::component::environment::{ComponentEnvironment};
 use crate::component::error::ComponentError;
 
 pub mod component;
@@ -24,5 +24,5 @@ pub trait Process: NamedComponent + Send + Sync {
     where
         Self: Sized;
 
-    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError>;
+    async fn process(&self, execution: &mut dyn ComponentEnvironment) -> Result<(), ComponentError>;
 }

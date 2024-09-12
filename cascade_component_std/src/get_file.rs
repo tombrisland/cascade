@@ -10,9 +10,9 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
 
-use cascade_api::component::{NamedComponent, Process};
-use cascade_api::component::environment::ExecutionEnvironment;
+use cascade_api::component::environment::ComponentEnvironment;
 use cascade_api::component::error::ComponentError;
+use cascade_api::component::{NamedComponent, Process};
 use cascade_api::message::content::Content;
 use cascade_api::message::Message;
 
@@ -44,7 +44,10 @@ impl Process for GetFile {
         Arc::new(get_file)
     }
 
-    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
+    async fn process(
+        &self,
+        execution: &mut dyn ComponentEnvironment,
+    ) -> Result<(), ComponentError> {
         // Error if the directory can't be read
         let entries: ReadDir = fs::read_dir(&self.path)?;
 

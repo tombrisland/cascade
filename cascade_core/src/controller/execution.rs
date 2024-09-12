@@ -1,8 +1,6 @@
-use cascade_api::component::component::{Component, ComponentMetadata, Schedule};
-use cascade_api::component::environment::ExecutionEnvironment;
+use cascade_api::component::component::{ComponentMetadata, Schedule};
 use cascade_api::component::error::ComponentError;
 use cascade_api::component::Process;
-use cascade_api::connection::ComponentChannels;
 use log::error;
 use std::sync::Arc;
 use std::time::Duration;
@@ -12,6 +10,9 @@ use tokio::task::{JoinHandle, JoinSet};
 use tokio::time::MissedTickBehavior::Delay;
 use tokio::time::{interval, Interval};
 use tokio_util::sync::CancellationToken;
+use crate::component::Component;
+use crate::connection::ComponentChannels;
+use crate::controller::environment::ExecutionEnvironment;
 
 #[derive(Default)]
 pub struct ComponentShutdown {

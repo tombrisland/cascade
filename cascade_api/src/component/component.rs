@@ -1,18 +1,8 @@
 use std::fmt::{Display, Formatter};
-use std::sync::Arc;
 
 use crate::component::definition::{ComponentDefinition, ComponentType};
-use crate::component::{NamedComponent, Process};
 use nanoid::nanoid;
 use serde::{Deserialize, Serialize};
-
-pub struct Component {
-    pub metadata: ComponentMetadata,
-    pub schedule: Schedule,
-
-    // Underlying producer to call
-    pub implementation: Arc<dyn Process>,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -59,21 +49,6 @@ impl ComponentMetadata {
             type_name,
             display_name: def.display_name.clone(),
             component_type: def.component_type.clone(),
-        }
-    }
-
-    // Derive metadata from an implementation
-    pub fn _from_named<T: NamedComponent>(
-        component_type: ComponentType,
-        display_name: String,
-    ) -> ComponentMetadata {
-        let type_name: String = T::type_name().to_string();
-
-        ComponentMetadata {
-            id: format!("{}-{}", type_name, nanoid!()),
-            type_name,
-            display_name,
-            component_type,
         }
     }
 }

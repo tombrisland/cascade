@@ -4,9 +4,10 @@ use std::sync::Arc;
 use log::info;
 use serde_json::Value;
 
-use cascade_api::component::component::{Component, ComponentMetadata};
+use cascade_api::component::component::{ComponentMetadata};
 use cascade_api::component::definition::ComponentDefinition;
 use cascade_api::component::Process;
+use crate::component::Component;
 
 pub type ComponentMap = HashMap<&'static str, fn(Value) -> Arc<dyn Process>>;
 

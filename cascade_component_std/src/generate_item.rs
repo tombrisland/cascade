@@ -5,9 +5,9 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use cascade_api::component::{NamedComponent, Process};
-use cascade_api::component::environment::ExecutionEnvironment;
+use cascade_api::component::environment::ComponentEnvironment;
 use cascade_api::component::error::ComponentError;
+use cascade_api::component::{NamedComponent, Process};
 use cascade_api::message::Message;
 
 #[derive(Serialize, Deserialize)]
@@ -36,12 +36,13 @@ impl Process for GenerateItem {
         Arc::new(generate_item)
     }
 
-    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
+    async fn process(
+        &self,
+        execution: &mut dyn ComponentEnvironment,
+    ) -> Result<(), ComponentError> {
         // Send as many as permitted by batch_size
         for _ in 0..self.batch_size {
-            execution
-                .send_default(Message::new(HashMap::new()))
-                .await?;
+            execution.send_default(Message::new(HashMap::new())).await?;
         }
 
         Ok(())

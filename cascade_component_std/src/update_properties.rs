@@ -5,9 +5,9 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use cascade_api::component::{NamedComponent, Process};
-use cascade_api::component::environment::ExecutionEnvironment;
+use cascade_api::component::environment::ComponentEnvironment;
 use cascade_api::component::error::ComponentError;
+use cascade_api::component::{NamedComponent, Process};
 use cascade_api::message::Message;
 
 #[derive(Serialize, Deserialize)]
@@ -33,7 +33,10 @@ impl Process for UpdateProperties {
         Arc::new(update_properties)
     }
 
-    async fn process(&self, execution: &mut ExecutionEnvironment) -> Result<(), ComponentError> {
+    async fn process(
+        &self,
+        execution: &mut dyn ComponentEnvironment,
+    ) -> Result<(), ComponentError> {
         let mut item: Message = execution.recv().await?.clone();
 
         // Loop through updates and update FlowItem

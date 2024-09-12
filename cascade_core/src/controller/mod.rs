@@ -10,13 +10,15 @@ use crate::controller::error::{RemoveConnectionError, StartComponentError, StopC
 use crate::controller::execution::ComponentExecution;
 use crate::graph::CascadeGraph;
 use crate::registry::ComponentRegistry;
-use cascade_api::component::component::{Component, ComponentMetadata, Schedule};
+use cascade_api::component::component::{ComponentMetadata, Schedule};
 use cascade_api::component::definition::ComponentDefinition;
 use cascade_api::connection::definition::ConnectionDefinition;
-use cascade_api::connection::{ComponentChannels, Connection};
+use crate::component::Component;
+use crate::connection::{ComponentChannels, Connection};
 
 pub mod error;
 mod execution;
+mod environment;
 
 pub type ConnectionsMap = HashMap<EdgeIndex, Connection>;
 
