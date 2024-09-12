@@ -11,7 +11,7 @@ use cascade_core::controller::CascadeController;
 use cascade_core::graph::{CascadeGraph, GraphInternal};
 
 use crate::endpoint::{
-    create_json_body, deserialise_body, EndpointError, EndpointResult, get_idx_query_parameter,
+    create_json_body, deserialise_body, get_idx_query_parameter, EndpointError, EndpointResult,
 };
 
 /// List the component definitions in the graph
@@ -69,7 +69,7 @@ pub async fn create_component(
         .is_known_component(&type_name)
     {
         return Ok(Response::builder()
-            .status(StatusCode::BAD_REQUEST)
+            .status(StatusCode::NOT_FOUND)
             .body(Body::from(format!(
                 "Type {} does not exist in registry",
                 type_name
@@ -117,7 +117,7 @@ pub async fn create_connection(
         .await
         .graph_internal;
 
-    // Check whether the nodes from the definition exist in the graph
+    // TODO Check whether the nodes from the definition exist in the graph
 
     // Add the edge between two defined nodes
     let index: EdgeIndex = graph_internal.add_edge(from, to, def);
@@ -151,7 +151,10 @@ pub async fn remove_component(
         controller_lock.graph_definition.write().await;
 
     // Error if component is still running
-    if controller_lock.executions.contains_key(&node_idx) {
+    if match controller_lock.executions.get(&node_idx) {
+        Some(execution) => !execution.is_stopped(),
+        None => false,
+    } {
         return Err(EndpointError::BadRequest(format!(
             "Component at idx {} is still running",
             node_idx.index()

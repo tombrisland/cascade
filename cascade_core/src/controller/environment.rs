@@ -1,14 +1,13 @@
 use crate::connection::{ComponentChannels, Connection};
 use async_channel::SendError;
 use async_trait::async_trait;
-use cascade_api::component::component::ComponentMetadata;
 use cascade_api::component::environment::ComponentEnvironment;
 use cascade_api::component::error::ComponentError;
 use cascade_api::connection::definition::DEFAULT_CONNECTION;
 use cascade_api::message::Message;
 use futures::stream::{select_all, SelectAll};
-use std::collections::HashMap;
 use futures_util::StreamExt;
+use std::collections::HashMap;
 use tokio_util::sync::CancellationToken;
 
 /// Wraps async-channel receivers to create a fused stream
@@ -31,8 +30,6 @@ impl FusedConnections {
 }
 
 pub struct ExecutionEnvironment {
-    pub metadata: ComponentMetadata,
-
     // Connections which can be ignored if they don't exist
     ignore_connections: Vec<String>,
 
@@ -92,12 +89,10 @@ impl ComponentEnvironment for ExecutionEnvironment {
 
 impl ExecutionEnvironment {
     pub fn new(
-        metadata: ComponentMetadata,
         channels: ComponentChannels,
         shutdown_token: CancellationToken,
     ) -> ExecutionEnvironment {
         ExecutionEnvironment {
-            metadata,
             ignore_connections: vec![DEFAULT_CONNECTION.to_string()],
             in_progress: None,
             rx: FusedConnections::new(channels.rx),

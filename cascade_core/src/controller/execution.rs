@@ -1,4 +1,7 @@
-use cascade_api::component::component::{ComponentMetadata, Schedule};
+use crate::component::Component;
+use crate::connection::ComponentChannels;
+use crate::controller::environment::ExecutionEnvironment;
+use cascade_api::component::component::{Schedule};
 use cascade_api::component::error::ComponentError;
 use cascade_api::component::Process;
 use log::error;
@@ -10,9 +13,6 @@ use tokio::task::{JoinHandle, JoinSet};
 use tokio::time::MissedTickBehavior::Delay;
 use tokio::time::{interval, Interval};
 use tokio_util::sync::CancellationToken;
-use crate::component::Component;
-use crate::connection::ComponentChannels;
-use crate::controller::environment::ExecutionEnvironment;
 
 #[derive(Default)]
 pub struct ComponentShutdown {
@@ -74,8 +74,6 @@ impl ComponentExecution {
     }
 
     pub fn start(&mut self) {
-        let metadata: ComponentMetadata = self.component.metadata.clone();
-
         // TODO throw if we try and start without expected configured channels
 
         match self.component.schedule {
@@ -83,7 +81,6 @@ impl ComponentExecution {
             Schedule::Unbounded { concurrency } => {
                 for _ in 0..concurrency {
                     let environment: ExecutionEnvironment = ExecutionEnvironment::new(
-                        metadata.clone(),
                         self.channels.clone(),
                         self.shutdown.token.clone(),
                     );
@@ -97,11 +94,8 @@ impl ComponentExecution {
                 // Don't try and catch up with missed ticks
                 interval.set_missed_tick_behavior(Delay);
 
-                let environment: ExecutionEnvironment = ExecutionEnvironment::new(
-                    metadata.clone(),
-                    self.channels.clone(),
-                    self.shutdown.token.clone(),
-                );
+                let environment: ExecutionEnvironment =
+                    ExecutionEnvironment::new(self.channels.clone(), self.shutdown.token.clone());
 
                 self.schedule_component(environment, Some(interval));
             }
@@ -115,7 +109,7 @@ impl ComponentExecution {
     }
 
     pub fn is_stopped(&self) -> bool {
-        self.shutdown.token.is_cancelled()
+        self.shutdown.token.is_cancelled() && self.tasks.is_none()
     }
 
     pub async fn kill(&mut self) {
